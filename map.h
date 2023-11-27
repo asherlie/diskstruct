@@ -83,13 +83,21 @@ struct bucket{
      *  goto retry
      * }
      * if (idx == capacity) {
-     *  check_if_thread_inserting()
+     *  check_if_thread_inserting() // uses logic above to ensure that no thread is mid insertion
      *  resize(); // this involves ftruncate() followed by writing to the bucket header
      *            // this will be threadsafe because other threads will be continuously retrying
      *            // due to the idx > capacity condition
      *  atomic_store(capacity, new_cap)
      * }
      * insert()
+     *
+     * one missing piece is the updating of n_entries in the bucket header
+     * is it possible to have this only be an atomic variable?
+     * the issue is with lookups, we can potentially just check if key is NULL, though, which
+     * would indicate that we've reached the end of our buckets
+     * atomic int n_entries can just be set on startup and upon loading into memory of an old map
+     * NO NEED TO HAVE IT ON DISK ALWAYS UPDATED
+     * IT CAN JUST BE WRITTEN ON SHUTDOWN to make sure data persists between loads into memory/runs of the program
      */
 };
 
