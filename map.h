@@ -72,9 +72,24 @@ struct bucket{
      *
      * we could maybe skip this whole mess by simply putting the responsibility of resizing buckets on the thread who
      * got the value of capacity from atomic_increment(n_entries)
-     * we may need to do something similar anyway in the event that
+     * other threads may get an idx that's > capacity
+     * these threads must continuously retry until they're able to get a valid idx
+     * each inserter thread will atomic_load(capacity) before atomic_inc(n_entries) to get idx
      *
-     *
+     * retry:
+     * atomic_load(capacity)
+     * atomic_inc(n_entries)
+     * if (idx > capacity) {
+     *  goto retry
+     * }
+     * if (idx == capacity) {
+     *  check_if_thread_inserting()
+     *  resize(); // this involves ftruncate() followed by writing to the bucket header
+     *            // this will be threadsafe because other threads will be continuously retrying
+     *            // due to the idx > capacity condition
+     *  atomic_store(capacity, new_cap)
+     * }
+     * insert()
      */
 };
 
