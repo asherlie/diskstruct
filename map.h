@@ -22,8 +22,30 @@ struct entry{
     
 };
 
+struct bucket{
+    char* fn;
+    FILE* fp;
+    /*
+     * should this info be stored? may be better to just 
+     * keep track of it in file header only
+    */
+    //int sz, cap;
+    /*
+     * a bucket consists of many consecutive entries
+     * each entry is provided the same number of bytes depending on
+     * element_sz
+     *
+     * the first handful of bytes of each bucket is used to store {n_entries, capacity}
+     *
+     * if an entry must be inserted into a bucket and n_entries == capacity, ftruncate
+     * will be used to grow the bucket file by at least element_sz in order to accomodate a new entry
+     */
+};
+
 struct map{
     uint16_t n_buckets;
     uint16_t element_sz;
+    /* each struct entry* provides info about a FILE* */
     struct entry** buckets;
+    FILE** buckets;
 };
