@@ -19,11 +19,18 @@
  */
 
 struct entry{
-    
+    /* key/value are cast to void* */
+    // wait, do we ever need to even store these in memory?
+    // no - this can just be what's returned 
+    void* key;
+    void* value;
 };
 
 struct bucket{
     char* fn;
+    /* fp is set to header, threads will open new FPs to do their actual writes
+     * a non-NULL fp indicates that the bucket in question has an associated file/has entries already
+     */
     FILE* fp;
     /*
      * should this info be stored? may be better to just 
@@ -40,13 +47,7 @@ struct bucket{
      * if an entry must be inserted into a bucket and n_entries == capacity, ftruncate
      * will be used to grow the bucket file by at least element_sz in order to accomodate a new entry
      *
-     * two file pointers will be store for each bucket
-     *  one to keep track of the header information
-     *  
-     *  one pointing to the next available offset for writing an entry, nvm actually, this won't be compatible with atomic
-     *  threadsafety
-     *
-     * just the one at header will be needed
+     * only a file pointer pointing to header will be needed
      * multiple threads will be able to write concurrently by opening a FP right before writing after calling
      * atomic_increment
      *
@@ -89,7 +90,9 @@ struct bucket{
      *            // due to the idx > capacity condition
      *  atomic_store(capacity, new_cap)
      * }
+     * increment_insertion_counter() // uses logic above to indicate an insertion
      * insert()
+     * decrement_insertion_counter() // uses logic above to indicate an insertion ending
      *
      * one missing piece is the updating of n_entries in the bucket header
      * is it possible to have this only be an atomic variable?
@@ -98,13 +101,45 @@ struct bucket{
      * atomic int n_entries can just be set on startup and upon loading into memory of an old map
      * NO NEED TO HAVE IT ON DISK ALWAYS UPDATED
      * IT CAN JUST BE WRITTEN ON SHUTDOWN to make sure data persists between loads into memory/runs of the program
+     *
+     * okay, so final plan is:
+     *  lookup which bucket to insert into
+     *  access the relevant struct bucket
+     *  grab an insertion idx, run above checks
+     *  
+     *
+     * NOTE:
+     *  reads from map will also rely on the insertion counter being zero, otherwise it'll retry
+     *  this allows us to only return fully inserted entries
+     *
+     * we'll use #define to generate structs with proper k/v types
+     *  they'll also be used to generate a struct entry uniquely for this struct map type
+     *
+     *  we don't even need a struct entry actually, we can just generate functions for lookup()
+     *  that cast to whatever type they're passed in the init #define
+     *  the real lookup function will return a void* or a uint8_t[] of size specified in args
+     *
+     * wait, we actually don't need this preprocessor nonsense!
+     * i can just add fields for the size of k/v in struct map!
+     * it'll be set by initialization function 
+     * nvm, may still be needed so functions can actually take in the right types
+     * and not just void* k / void* v
      */
 };
 
 struct map{
+    char* name;
     uint16_t n_buckets;
-    uint16_t element_sz;
+    uint32_t key_sz, value_sz;
     /* each struct entry* provides info about a FILE* */
-    struct entry** buckets;
-    FILE** buckets;
+    //struct entry** buckets;
+
+    struct bucket* buckets;
+    //char** buckets_fn;
+    //FILE** buckets_fp;
 };
+
+void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, char* bucket_prefix);
+/* k/v size must be consistent with struct map's entries */
+_Bool insert_map(struct map* m, void* key, void* value);
+void* lookup_map(struct map* m, void* key);
