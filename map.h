@@ -43,6 +43,8 @@ struct bucket{
      * element_sz
      *
      * the first handful of bytes of each bucket is used to store {n_entries, capacity}
+     * nvm - n_entries isn't needed, it would be too hard to maintain threadsafety
+     *  instead we'll use logic below - key of NULL is end of bucket during lookup
      *
      * if an entry must be inserted into a bucket and n_entries == capacity, ftruncate
      * will be used to grow the bucket file by at least element_sz in order to accomodate a new entry
