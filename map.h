@@ -145,8 +145,8 @@ struct bucket{
 };
 
 struct map{
-    char name[PATH_MAX];
-    char bucket_prefix[PATH_MAX-10];
+    char name[PATH_MAX/2];
+    char bucket_prefix[(PATH_MAX/2)-10];
     uint16_t n_buckets;
     uint32_t key_sz, value_sz;
 

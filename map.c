@@ -1,6 +1,7 @@
 #include <stdatomic.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #include "map.h"
 
@@ -18,8 +19,9 @@ void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
     m->value_sz = value_sz;
     m->n_buckets = n_buckets;
     m->buckets = calloc(sizeof(struct bucket), n_buckets);
+    mkdir(m->name, 0777);
     for(int i = 0; i < m->n_buckets; ++i){
-        sprintf(m->buckets[i].fn, "%s_%i.hbk", m->bucket_prefix, i);
+        sprintf(m->buckets[i].fn, "%s/%s_%i.hbk", m->name, m->bucket_prefix, i);
     }
 }
 /* loads map into memory */
