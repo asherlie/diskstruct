@@ -31,7 +31,13 @@ struct bucket{
     /* fp is set to header, threads will open new FPs to do their actual writes
      * a non-NULL fp indicates that the bucket in question has an associated file/has entries already
      */
-    FILE* fp;
+    FILE* header_fp;
+
+    /* this replaces the header in the actual bucket file, n_entries will be made
+     * clear upon finding the first key of NULL
+     * capacity will be apparent from filesz / (key_sz+value_sz)
+     */
+    uint32_t n_entries, cap;
     /*
      * should this info be stored? may be better to just 
      * keep track of it in file header only
@@ -45,6 +51,10 @@ struct bucket{
      * the first handful of bytes of each bucket is used to store {n_entries, capacity}
      * nvm - n_entries isn't needed, it would be too hard to maintain threadsafety
      *  instead we'll use logic below - key of NULL is end of bucket during lookup
+     *  we actually don't necessarily need a header at all, we can easily just store this info in struct bucket
+     *  in memory only, 
+     *    upon startup if we're loading in an already existing map, we can just calculate n_entries
+     *    with key_sz, value_sz, and filesz
      *
      * if an entry must be inserted into a bucket and n_entries == capacity, ftruncate
      * will be used to grow the bucket file by at least element_sz in order to accomodate a new entry
@@ -142,6 +152,8 @@ struct map{
 };
 
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, char* bucket_prefix);
+/* loads map into memory */
+void load_map(struct map* m, char* name, uint32_t key_sz, uint32_t value_sz, char* bucket_prefix);
 /* k/v size must be consistent with struct map's entries */
 _Bool insert_map(struct map* m, void* key, void* value);
 void* lookup_map(struct map* m, void* key);
