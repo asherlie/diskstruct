@@ -1,4 +1,6 @@
 #include <stdint.h>
+#include <stdio.h>
+#include <stdatomic.h>
 
 /*
  * maps will take this structure on disk
@@ -37,12 +39,13 @@ struct bucket{
      * clear upon finding the first key of NULL
      * capacity will be apparent from filesz / (key_sz+value_sz)
      */
-    uint32_t n_entries, cap;
+    _Atomic uint32_t n_entries;
+    _Atomic uint32_t cap;
+    _Atomic uint8_t insertions_in_prog;
     /*
      * should this info be stored? may be better to just 
      * keep track of it in file header only
     */
-    //int sz, cap;
     /*
      * a bucket consists of many consecutive entries
      * each entry is provided the same number of bytes depending on
