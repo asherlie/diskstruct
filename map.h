@@ -30,7 +30,7 @@ struct entry{
 };
 
 struct bucket{
-    char* fn;
+    char fn[PATH_MAX];
     /* fp is set to header, threads will open new FPs to do their actual writes
      * a non-NULL fp indicates that the bucket in question has an associated file/has entries already
      */
@@ -150,7 +150,7 @@ struct map{
     uint16_t n_buckets;
     uint32_t key_sz, value_sz;
 
-    int (*hashfunc)(void*);
+    uint16_t (*hashfunc)(void*);
     /* each struct entry* provides info about a FILE* */
     //struct entry** buckets;
 
@@ -160,7 +160,7 @@ struct map{
 };
 
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
-              char* bucket_prefix, int (*hashfunc)(void*));
+              char* bucket_prefix, uint16_t (*hashfunc)(void*));
 /* loads map into memory */
 void load_map(struct map* m, char* name, uint32_t key_sz, uint32_t value_sz, char* bucket_prefix);
 /* k/v size must be consistent with struct map's entries */
