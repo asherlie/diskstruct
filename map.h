@@ -149,6 +149,8 @@ struct map{
     char bucket_prefix[PATH_MAX-10];
     uint16_t n_buckets;
     uint32_t key_sz, value_sz;
+
+    int (*hashfunc)(void*);
     /* each struct entry* provides info about a FILE* */
     //struct entry** buckets;
 
@@ -157,7 +159,8 @@ struct map{
     //FILE** buckets_fp;
 };
 
-void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, char* bucket_prefix);
+void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
+              char* bucket_prefix, int (*hashfunc)(void*));
 /* loads map into memory */
 void load_map(struct map* m, char* name, uint32_t key_sz, uint32_t value_sz, char* bucket_prefix);
 /* k/v size must be consistent with struct map's entries */

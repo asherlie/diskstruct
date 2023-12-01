@@ -4,10 +4,12 @@
 
 #include "map.h"
 
-void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, char* bucket_prefix){
+void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
+              char* bucket_prefix, int (*hashfunc)(void*)){
 
     strcpy(m->name, name);
     strcpy(m->bucket_prefix, bucket_prefix);
+    m->hashfunc = hashfunc;
     m->key_sz = key_sz;
     m->value_sz = value_sz;
     m->n_buckets = n_buckets;
