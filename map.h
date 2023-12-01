@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdatomic.h>
+#include <linux/limits.h>
 
 /*
  * maps will take this structure on disk
@@ -33,7 +34,8 @@ struct bucket{
     /* fp is set to header, threads will open new FPs to do their actual writes
      * a non-NULL fp indicates that the bucket in question has an associated file/has entries already
      */
-    FILE* header_fp;
+    // no pointers are kept
+    //FILE* header_fp;
 
     /* this replaces the header in the actual bucket file, n_entries will be made
      * clear upon finding the first key of NULL
@@ -143,7 +145,8 @@ struct bucket{
 };
 
 struct map{
-    char* name;
+    char name[PATH_MAX];
+    char bucket_prefix[PATH_MAX-10];
     uint16_t n_buckets;
     uint32_t key_sz, value_sz;
     /* each struct entry* provides info about a FILE* */
