@@ -63,6 +63,7 @@ void test_parallel(int threads){
 void test_struct(){
     teststruct m;
     struct tstr data, ret;
+    _Bool found;
 
     data.a = 94;
     strcpy(data.str, "asher");
@@ -74,16 +75,17 @@ void test_struct(){
         insert_teststruct(&m, i, data);
     }
     
-    ret = lookup_teststruct(&m, 2795);
+    ret = lookup_teststruct(&m, 2795, &found);
 
     printf("ret.a: %i, ret.str: %s\n", ret.a, ret.str);
 }
 
 void test_float(){
+    _Bool found;
     testmap m;
     init_testmap(&m);
     insert_testmap(&m, 9904, 32.1);
-    printf("%f\n", lookup_testmap(&m, 9904));
+    printf("%f\n", lookup_testmap(&m, 9904, &found));
 }
 
 void test_raw(){

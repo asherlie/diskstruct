@@ -25,8 +25,12 @@
     int insert_##name(name* m, key_type k, val_type v){ \
         return insert_map(&m->m, &k, &v); \
     } \
-    val_type lookup_##name(name* m, key_type k){ \
+    val_type lookup_##name(name* m, key_type k, _Bool* found){ \
         void* tmp = lookup_map(&m->m, &k);\
+        if (!tmp) {\
+            *found = 0; \
+        } \
+        *found = 1; \
         return *((val_type*)tmp); \
     }
 
