@@ -3,6 +3,48 @@
 #include <stdatomic.h>
 #include <linux/limits.h>
 
+/*#define DEF_FUNC(name, ke*/
+
+/* aha! the problem is where it's being called! of course i can't just call a function from nowhere
+ * this must be two macros - create map, which creates our init function, insert function
+ */
+// this should just create functions, not declare any variables
+// it'll create functions for a specific key/value type that can be used on a fresh struct map!
+//
+// i want it to work like:
+//  register_map(ashmap, int, float, hashfunc)
+//
+//  defines a struct called ashmap that has functions that lookup
+#define REGISTER_MAP(name, key_type, val_type, hash_func) \
+    typedef struct {\
+        struct map m;\
+    }name;\
+    void init_##name(name* m){\
+        init_map(&m->m, #name, 1024, sizeof(key_type), sizeof(val_type), "autobkt", hash_func); \
+    } \
+    int insert_##name(name* m, key_type k, val_type v){ \
+        return insert_map(&m->m, &k, &v); \
+    } \
+    val_type lookup_##name(name* m, key_type k){ \
+        void* tmp = lookup_map(&m->m, &k);\
+        return *((val_type*)tmp); \
+    }
+
+
+#if 0
+#define INIT_MAP(name, key_type, val_type, hash_func)                                        \
+    struct map AUTOINIT_MAP_##name_##key_type##val_type;                                     \
+                                                                                             \
+    init_map(&AUTOINIT_MAP_##name_##key_type##val_type, #name#key_type#val_type, 1024,       \
+        sizeof(key_type), sizeof(val_type), "autobkt", hash_func);                           \
+    int insert_##name(key_type k, val_type v){                                               \
+        return insert_map(&AUTOINIT_MAP_##name_##key_type##val_type, (void*)&k, (void*)&v);  \
+    }                                                                                        \
+    (void)AUTOINIT_MAP_##name_##key_type##val_type;                                          \
+    (void)insert_##name;
+#endif
+
+
 /*
  * maps will take this structure on disk
  * can fwrite() be used?
@@ -44,6 +86,7 @@ struct bucket{
     _Atomic uint32_t n_entries;
     _Atomic uint32_t cap;
     _Atomic uint8_t insertions_in_prog;
+    atomic_flag resize_in_prog;
     /*
      * should this info be stored? may be better to just 
      * keep track of it in file header only
@@ -115,6 +158,32 @@ struct bucket{
      * is it possible to have this only be an atomic variable?
      * the issue is with lookups, we can potentially just check if key is NULL, though, which
      * would indicate that we've reached the end of our buckets
+     *  two things - firstly this won't be a problem. this is only relevant when we're
+     *  loading a map into memory from disk which isn't handled yet
+     *      although it won't be a problem like i thought below because it'll just be loaded into mem
+     *      and no writes are possible in that time
+     *      so we can just check for NULL during startup
+     *  secondly - 
+     *  this actually doesn't work, there's a chance that we've partially written to some bucket idx
+     *  and it'll appear NULL
+     *  one way we could solve this is just to not allow concurrent reads/writes
+     *  but this isn't great
+     *  there can also just be a mutex lock used only for r+w, 
+     *  can also actually just use insertions_in_prog!
+     *      retry until it's 0?
+     *      actually - this doesn't help because lookups are pretty involved, we can potentially
+     *      just grab bucket, 
+     *      OH! good idea, i can wait until insertions_in_prog == 0 and grab bucket->n_entries at that moment
+     *      this is the value that will be  used for n_entries for the lookup call
+     *          FIRST, GRAB N_ENTRIES ATOMICALLY, THEN wait until there are no pending insertions.
+     *          only at this point will we KNOW that >= n_entries are inserted fully
+     *          the only issue that could arise is a potential resize. this can be remedied, however,
+     *          by incrementing insertions_in_prog POTENTIALLY
+     *
+     *
+     *      IF there are no pending insertions AND we ensure this remains the case 
+     *      we grab n_entries using CAS or similar, 
+     *  
      * atomic int n_entries can just be set on startup and upon loading into memory of an old map
      * NO NEED TO HAVE IT ON DISK ALWAYS UPDATED
      * IT CAN JUST BE WRITTEN ON SHUTDOWN to make sure data persists between loads into memory/runs of the program
