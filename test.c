@@ -35,12 +35,14 @@ REGISTER_MAP(teststruct, int, struct tstr, hashfnc)
 REGISTER_MAP(testmap, int, float, hashfnc)
 REGISTER_MAP(intmap, int, int, hashfnc)
 
-initialize 10 threads, each is given a diff starting integer
-check that n_entries is accurate
-pop all entries to make sure that each integer value is represented
-void test_parallel(){
-    pthread_t pth;
-}
+/*
+ * initialize 10 threads, each is given a diff starting integer
+ * check that n_entries is accurate
+ * pop all entries to make sure that each integer value is represented
+ * void test_parallel(){
+ *     pthread_t pth;
+ * }
+*/
 
 void test_struct(){
     teststruct m;
