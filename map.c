@@ -12,9 +12,11 @@ void create_bucket_file(struct bucket* b){
 }
 
 _Bool grow_file(char* fn, uint32_t grow_to){
+    _Bool ret;
     FILE* fp = fopen(fn, "w");
-    return !ftruncate(fileno(fp), grow_to);
-
+    ret = !ftruncate(fileno(fp), grow_to);
+    fclose(fp);
+    return ret;
 }
 
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
@@ -88,12 +90,14 @@ int insert_map(struct map* m, void* key, void* value){
         while (atomic_load(&b->insertions_in_prog)) {
             ;
         }
+        grow_file(b->fn, bucket_cap * 2);
+        atomic_store(&b->cap, bucket_cap * 2);
     }
     atomic_fetch_add(&b->insertions_in_prog, 1);
     /* insert regularly */
     /* TODO: check for failed fopen() */
     fp = fopen(b->fn, "w");
-    fseek(fp, 0L, SEEK_SET);
+    fseek(fp, bucket_offset, SEEK_SET);
     /* TODO: think about endianness, would help for compatibility between machines */
     fwrite(key, m->key_sz, 1, fp);
     fwrite(value, m->value_sz, 1, fp);
@@ -113,12 +117,23 @@ int insert_map(struct map* m, void* key, void* value){
     */
     return retries;
 }
+
 void* lookup_map(struct map* m, void* key);
 
-int main(){
+/* ~~~~~ test ~~~~~ */
+
+uint16_t hashfnc(void* key){
+    return *((int*)key);
+}
+
+int main() {
     struct map m;
-    init_map(&m, "ashmap", 10, sizeof(int), sizeof(int), "ashbkt", NULL);
+    int k, v;
+    init_map(&m, "ashmap", 10, sizeof(int), sizeof(int), "ashbkt", hashfnc);
     for(int i = 0; i < m.n_buckets; ++i){
         printf("%s\n", m.buckets[i].fn);
     }
+    k = 4;
+    v = 99032;
+    insert_map(&m, &k, &v);
 }
