@@ -84,14 +84,15 @@ int insert_map(struct map* m, void* key, void* value){
     }
     /* resize bucket */
     if (bucket_idx == bucket_cap) {
+        uint32_t grow_to = bucket_cap ? bucket_cap * 2 : m->value_sz + m->key_sz;
         /* wait until all current insertions are finished / all FILE*s are closed
          * before beginning file resize
          */
         while (atomic_load(&b->insertions_in_prog)) {
             ;
         }
-        grow_file(b->fn, bucket_cap * 2);
-        atomic_store(&b->cap, bucket_cap * 2);
+        grow_file(b->fn, grow_to);
+        atomic_store(&b->cap, grow_to);
     }
     atomic_fetch_add(&b->insertions_in_prog, 1);
     /* insert regularly */
@@ -134,6 +135,7 @@ int main() {
         printf("%s\n", m.buckets[i].fn);
     }
     k = 4;
-    v = 99032;
-    insert_map(&m, &k, &v);
+    for (v = 0; v < 200; ++v) {
+        insert_map(&m, &k, &v);
+    }
 }
