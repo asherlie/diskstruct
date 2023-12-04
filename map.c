@@ -122,7 +122,7 @@ void* lookup_map(struct map* m, void* key){
     uint16_t idx = m->hashfunc(key) % m->n_buckets;
     struct bucket* b = &m->buckets[idx];
     uint32_t n_entries = atomic_load(&b->n_entries);
-    _Bool insertions_completed = 0, resize_in_prog = 1;
+    _Bool insertions_completed = 0, resize_in_prog = 1, found = 0;
     FILE* fp;
     void* lu_value = malloc(m->value_sz);
     void* lu_key = malloc(m->key_sz);
@@ -163,6 +163,7 @@ void* lookup_map(struct map* m, void* key){
         fread(lu_key, m->key_sz, 1, fp);
         fread(lu_value, m->value_sz, 1, fp);
         if (!memcmp(key, lu_key, m->key_sz)) {
+            found = 1;
             break;
         }
     }
@@ -170,6 +171,10 @@ void* lookup_map(struct map* m, void* key){
     atomic_fetch_sub(&b->insertions_in_prog, 1);
 
     free(lu_key);
+    if (!found) {
+        free(lu_value);
+        lu_value = NULL;
+    }
 
     return lu_value;
 }

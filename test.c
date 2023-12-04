@@ -1,5 +1,6 @@
 #include <string.h>
 #include <pthread.h>
+#include <stdlib.h>
 
 #include "map.h"
 
@@ -39,10 +40,25 @@ REGISTER_MAP(intmap, int, int, hashfnc)
  * initialize 10 threads, each is given a diff starting integer
  * check that n_entries is accurate
  * pop all entries to make sure that each integer value is represented
- * void test_parallel(){
- *     pthread_t pth;
- * }
 */
+struct parg{
+    intmap* m;
+    int startpoint, insertions;
+};
+
+void* insert_th(void* vparg){
+    struct parg* p = vparg;
+    for (int i = 0; i < p->insertions; ++i) {
+        insert_intmap(p->m, p->startpoint+i, p->startpoint+i);
+    }
+    return NULL;
+}
+
+/* tests if each index up until _ has an integer set that's the same as it */
+void test_parallel(int threads){
+    pthread_t* pth = malloc(sizeof(pthread_t)*threads);
+
+}
 
 void test_struct(){
     teststruct m;
