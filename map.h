@@ -164,5 +164,5 @@ void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
 /* loads map into memory */
 void load_map(struct map* m, char* name, uint32_t key_sz, uint32_t value_sz, char* bucket_prefix);
 /* k/v size must be consistent with struct map's entries */
-_Bool insert_map(struct map* m, void* key, void* value);
+int insert_map(struct map* m, void* key, void* value);
 void* lookup_map(struct map* m, void* key);
