@@ -82,7 +82,14 @@ int insert_map(struct map* m, void* key, void* value){
     }
     /* resize bucket */
     if (bucket_idx == bucket_cap) {
+        /* wait until all current insertions are finished / all FILE*s are closed
+         * before beginning file resize
+         */
+        while (atomic_load(&b->insertions_in_prog)) {
+            ;
+        }
     }
+    atomic_fetch_add(&b->insertions_in_prog, 1);
     /* insert regularly */
     /* TODO: check for failed fopen() */
     fp = fopen(b->fn, "w");
@@ -90,6 +97,11 @@ int insert_map(struct map* m, void* key, void* value){
     /* TODO: think about endianness, would help for compatibility between machines */
     fwrite(key, m->key_sz, 1, fp);
     fwrite(value, m->value_sz, 1, fp);
+    fclose(fp);
+    /* this is only relevant for resizing of buckets which is why we decrement AFTER fclose()
+     * concurrent writes to different offsets of one bucket are perfectly fine
+     */
+    atomic_fetch_sub(&b->insertions_in_prog, 1);
     /*
      * right now i'm assuming that we need to initialize buckets to nonzero size
      * but it's probably alright to start them at 0 size as well
