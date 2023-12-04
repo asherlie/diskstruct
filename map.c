@@ -51,7 +51,9 @@ void load_map(struct map* m, char* name, uint32_t key_sz, uint32_t value_sz, cha
 int insert_map(struct map* m, void* key, void* value){
     uint16_t idx = m->hashfunc(key) % m->n_buckets;
     uint32_t bucket_idx, bucket_cap;
+    uint32_t bucket_offset;
     struct bucket* b = &m->buckets[idx];
+    FILE* fp;
     int retries = -1;
 
 
@@ -65,6 +67,7 @@ int insert_map(struct map* m, void* key, void* value){
  *     so i gues cap should be atomically loaded! right after retry:
 */
     bucket_idx = atomic_fetch_add(&b->n_entries, 1);
+    bucket_offset = bucket_idx * (m->key_sz + m->value_sz);
     /* retrying after getting idx for now
      * this way we never have a corrupted n_entries and we can always set it
      * using the above - eventually we'll either reach a point where idx == cap
@@ -80,6 +83,13 @@ int insert_map(struct map* m, void* key, void* value){
     /* resize bucket */
     if (bucket_idx == bucket_cap) {
     }
+    /* insert regularly */
+    /* TODO: check for failed fopen() */
+    fp = fopen(b->fn, "w");
+    fseek(fp, 0L, SEEK_SET);
+    /* TODO: think about endianness, would help for compatibility between machines */
+    fwrite(key, m->key_sz, 1, fp);
+    fwrite(value, m->value_sz, 1, fp);
     /*
      * right now i'm assuming that we need to initialize buckets to nonzero size
      * but it's probably alright to start them at 0 size as well
