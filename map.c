@@ -7,10 +7,6 @@
 
 #include "map.h"
 
-void create_bucket_file(struct bucket* b){
-    (void)b;
-}
-
 _Bool grow_file(char* fn, uint32_t grow_to){
     _Bool ret;
     FILE* fp = fopen(fn, "w");
@@ -91,7 +87,10 @@ int insert_map(struct map* m, void* key, void* value){
         while (atomic_load(&b->insertions_in_prog)) {
             ;
         }
+        /* lookup_map() will wait for this flag to be cleared */
+        atomic_flag_test_and_set(&b->resize_in_prog);
         grow_file(b->fn, grow_to);
+        atomic_flag_clear(&b->resize_in_prog);
         atomic_store(&b->cap, grow_to);
     }
     atomic_fetch_add(&b->insertions_in_prog, 1);
@@ -119,23 +118,58 @@ int insert_map(struct map* m, void* key, void* value){
     return retries;
 }
 
-void* lookup_map(struct map* m, void* key);
+void* lookup_map(struct map* m, void* key){
+    uint16_t idx = m->hashfunc(key) % m->n_buckets;
+    struct bucket* b = &m->buckets[idx];
+    uint32_t n_entries = atomic_load(&b->n_entries);
+    _Bool insertions_completed = 0, resize_in_prog = 1;
+    FILE* fp;
+    void* lu_value = malloc(m->value_sz);
+    void* lu_key = malloc(m->key_sz);
 
-/* ~~~~~ test ~~~~~ */
+    /* incrementing insertions_in_prog before waiting until all insertions are finished
+     * incrementing is done to ensure that no resizing will begin during our lookup
+     *
+     * there's no guarantee that more insertions won't begin after we've read insertions_in_prog of 1, but
+     * this doesn't matter because at this point we will have a guarantee of >= n_entries entries being written
+     */
+    /*what if resize is in progress as we start*/
+    atomic_fetch_add(&b->insertions_in_prog, 1);
 
-uint16_t hashfnc(void* key){
-    return *((int*)key);
-}
+    /* after ensuring we will not begin a bucket resize, we need to wait until
+     * a potential running resize is complete
+     * this is done in the same loop that we wait until n_entries are guaranteed to be populated
+     */
 
-int main() {
-    struct map m;
-    int k, v;
-    init_map(&m, "ashmap", 10, sizeof(int), sizeof(int), "ashbkt", hashfnc);
-    for(int i = 0; i < m.n_buckets; ++i){
-        printf("%s\n", m.buckets[i].fn);
+    /* TODO: replace with do while */
+    while (!insertions_completed || resize_in_prog) {
+        if (atomic_load(&b->insertions_in_prog) == 1){
+            insertions_completed = 1;
+        }
+        /* once resize in progress has completed, we know that another resize will not occur
+         * until we decrement insertions_in_prog so we're safe to access the bucket in question
+         */
+        if (!atomic_flag_test_and_set(&b->resize_in_prog)) {
+            resize_in_prog = 0;
+        }
     }
-    k = 4;
-    for (v = 0; v < 200; ++v) {
-        insert_map(&m, &k, &v);
+
+    fp = fopen(b->fn, "r");
+
+    /* TODO: allow loading of a specified number of k/v pairs into memory to speed up lookups */
+
+    for (uint32_t i = 0; i < n_entries; ++i) {
+        fseek(fp, i * (m->key_sz + m->value_sz), SEEK_SET);
+        fread(lu_key, m->key_sz, 1, fp);
+        fread(lu_value, m->value_sz, 1, fp);
+        if (!memcmp(key, lu_key, m->key_sz)) {
+            break;
+        }
     }
+
+    atomic_fetch_sub(&b->insertions_in_prog, 1);
+
+    free(lu_key);
+
+    return lu_value;
 }
