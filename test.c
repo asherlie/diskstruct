@@ -55,9 +55,30 @@ void* insert_th(void* vparg){
 }
 
 /* tests if each index up until _ has an integer set that's the same as it */
-void test_parallel(int threads){
+void test_parallel(int threads, int insertions){
     pthread_t* pth = malloc(sizeof(pthread_t)*threads);
+    struct parg* pa;
+    int insertions_per_thread = insertions / threads;
+    int startpoint = 0;
+    int total_entries = 0;
+    intmap m;
+    init_intmap(&m);
 
+    for (int i = 0; i < threads; ++i) {
+        pa = malloc(sizeof(struct parg)*threads);
+        pa->m = &m;
+        pa->insertions = insertions_per_thread;
+        pa->startpoint = startpoint;
+        pthread_create(pth+i, NULL, insert_th, pa);
+        startpoint += insertions_per_thread;
+    }
+    for (int i = 0; i < threads; ++i) {
+        pthread_join(pth[i], NULL);
+    }
+    for (int i = 0; i < m.m.n_buckets; ++i) {
+        total_entries += m.m.buckets[i].n_entries;
+    }
+    printf("succesfully inserted %i entries\n", total_entries);
 }
 
 void test_struct(){
@@ -111,6 +132,7 @@ void test_raw(){
 }
 
 int main(){
-    test_struct();
+    test_parallel(1, 100000);
+    /*test_struct();*/
     /*test_float();*/
 }
