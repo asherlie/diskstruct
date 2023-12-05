@@ -3,15 +3,16 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <fcntl.h>
 #include <sys/stat.h>
 
 #include "map.h"
 
 _Bool grow_file(char* fn, uint32_t grow_to){
     _Bool ret;
-    FILE* fp = fopen(fn, "w");
-    ret = !ftruncate(fileno(fp), grow_to);
-    fclose(fp);
+    int fd = open(fn, O_TRUNC | O_CREAT | O_WRONLY, 0666);
+    ret = !ftruncate(fd, grow_to);
+    close(fd);
     return ret;
 }
 
@@ -51,7 +52,7 @@ int insert_map(struct map* m, void* key, void* value){
     uint32_t bucket_idx, bucket_cap;
     uint32_t bucket_offset;
     struct bucket* b = &m->buckets[idx];
-    FILE* fp;
+    int fd;
     int retries = -1;
 
 
@@ -96,12 +97,12 @@ int insert_map(struct map* m, void* key, void* value){
     atomic_fetch_add(&b->insertions_in_prog, 1);
     /* insert regularly */
     /* TODO: check for failed fopen() */
-    fp = fopen(b->fn, "w");
-    fseek(fp, bucket_offset, SEEK_SET);
+    fd = open(b->fn, O_WRONLY);
+    lseek(fd, bucket_offset, SEEK_SET);
     /* TODO: think about endianness, would help for compatibility between machines */
-    fwrite(key, m->key_sz, 1, fp);
-    fwrite(value, m->value_sz, 1, fp);
-    fclose(fp);
+    write(fd, key, m->key_sz);
+    write(fd, value, m->value_sz);
+    close(fd);
     /* this is only relevant for resizing of buckets which is why we decrement AFTER fclose()
      * concurrent writes to different offsets of one bucket are perfectly fine
      */
@@ -123,7 +124,7 @@ void* lookup_map(struct map* m, void* key){
     struct bucket* b = &m->buckets[idx];
     uint32_t n_entries = atomic_load(&b->n_entries);
     _Bool insertions_completed = 0, resize_in_prog = 1, found = 0;
-    FILE* fp;
+    int fd;
     void* lu_value = malloc(m->value_sz);
     void* lu_key = malloc(m->key_sz);
 
@@ -154,14 +155,14 @@ void* lookup_map(struct map* m, void* key){
         }
     }
 
-    fp = fopen(b->fn, "r");
+    fd = open(b->fn, O_RDONLY);
 
     /* TODO: allow loading of a specified number of k/v pairs into memory to speed up lookups */
 
     for (uint32_t i = 0; i < n_entries; ++i) {
-        fseek(fp, i * (m->key_sz + m->value_sz), SEEK_SET);
-        fread(lu_key, m->key_sz, 1, fp);
-        fread(lu_value, m->value_sz, 1, fp);
+        lseek(fd, i * (m->key_sz + m->value_sz), SEEK_SET);
+        read(fd, lu_key, m->key_sz);
+        read(fd, lu_value, m->value_sz);
         if (!memcmp(key, lu_key, m->key_sz)) {
             found = 1;
             break;
@@ -169,6 +170,7 @@ void* lookup_map(struct map* m, void* key){
     }
 
     atomic_fetch_sub(&b->insertions_in_prog, 1);
+    close(fd);
 
     free(lu_key);
     if (!found) {
