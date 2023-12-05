@@ -1,6 +1,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <stdlib.h>
+#include <stdatomic.h>
 
 #include "map.h"
 
@@ -131,7 +132,17 @@ void test_raw(){
     printf("result: %i\n", *lu_v);
 }
 
+void check_lf(){
+    struct bucket b;
+    printf("%i\n", atomic_is_lock_free(&b.resize_in_prog));
+    printf("%i\n", atomic_is_lock_free(&b.n_entries));
+    printf("%i\n", atomic_is_lock_free(&b.insertions_in_prog));
+    printf("%i\n", atomic_is_lock_free(&b.cap));
+}
+
 int main(){
+    check_lf();
+    /*test_parallel(100, 100000000);*/
     test_parallel(1, 100000);
     /*test_struct();*/
     /*test_float();*/
