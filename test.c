@@ -36,6 +36,7 @@ struct tstr{
 REGISTER_MAP(teststruct, int, struct tstr, hashfnc)
 REGISTER_MAP(testmap, int, float, hashfnc)
 REGISTER_MAP(intmap, int, int, hashfnc)
+REGISTER_MAP(simpmap, int, int, hashfnc)
 
 /*
  * initialize 10 threads, each is given a diff starting integer
@@ -80,6 +81,32 @@ void test_parallel(int threads, int insertions){
         total_entries += m.m.buckets[i].n_entries;
     }
     printf("succesfully inserted %i entries\n", total_entries);
+}
+
+void test_load_parallel(){
+    _Bool found;
+    intmap m;
+    load_intmap(&m);
+    for (int i = 0; i < 1000; ++i) {
+        printf("%i\n", lookup_intmap(&m, i, &found));
+    }
+}
+
+void write_load_test(int n){
+    simpmap m, ml;
+    _Bool found;
+
+    init_simpmap(&m);
+    for (int i = 0; i < n; ++i) {
+        insert_simpmap(&m, i, i);
+    }
+
+    load_simpmap(&ml);
+
+    /* TODO: for some reason 8192+ show up as 0 */
+    for (int i = 0; i < n; ++i) {
+        printf("%i: %i\n", i, lookup_simpmap(&ml, i, &found));
+    }
 }
 
 void test_struct(){
@@ -149,9 +176,11 @@ void check_lf(){
 }
 
 int main(){
-    check_lf();
+    /*check_lf();*/
     /*test_parallel(100, 100000000);*/
+    /*test_load_parallel();*/
+    write_load_test(8200);
     /*test_parallel(1, 100000);*/
-    test_struct();
+    /*test_struct();*/
     /*test_float();*/
 }
