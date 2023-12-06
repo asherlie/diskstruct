@@ -142,14 +142,14 @@ void test_raw(){
 
 void check_lf(){
     struct bucket b;
-    printf("%i\n", atomic_is_lock_free(&b.resize_in_prog));
-    printf("%i\n", atomic_is_lock_free(&b.n_entries));
-    printf("%i\n", atomic_is_lock_free(&b.insertions_in_prog));
-    printf("%i\n", atomic_is_lock_free(&b.cap));
+    printf("atomic_is_lock_free(resize_in_prog): %i\n", atomic_is_lock_free(&b.resize_in_prog));
+    printf("atomic_is_lock_free(n_entries): %i\n", atomic_is_lock_free(&b.n_entries));
+    printf("atomic_is_lock_free(insertions_in_prog): %i\n", atomic_is_lock_free(&b.insertions_in_prog));
+    printf("atomic_is_lock_free(cap): %i\n", atomic_is_lock_free(&b.cap));
 }
 
 int main(){
-    /*check_lf();*/
+    check_lf();
     /*test_parallel(100, 100000000);*/
     /*test_parallel(1, 100000);*/
     test_struct();
