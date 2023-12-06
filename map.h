@@ -20,7 +20,7 @@
         struct map m;\
     }name;\
     void init_##name(name* m){\
-        init_map(&m->m, #name, 1024, sizeof(key_type), sizeof(val_type), "autobkt", hash_func); \
+        init_map(&m->m, #name, 1, sizeof(key_type), sizeof(val_type), "autobkt", hash_func); \
     } \
     int insert_##name(name* m, key_type k, val_type v){ \
         return insert_map(&m->m, &k, &v); \
@@ -235,7 +235,8 @@ struct map{
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
               char* bucket_prefix, uint16_t (*hashfunc)(void*));
 /* loads map into memory */
-void load_map(struct map* m, char* name, uint32_t key_sz, uint32_t value_sz, char* bucket_prefix);
+void load_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz,
+              char* bucket_prefix,  uint16_t (*hashfunc)(void*));
 /* k/v size must be consistent with struct map's entries */
 int insert_map(struct map* m, void* key, void* value);
 void* lookup_map(struct map* m, void* key);

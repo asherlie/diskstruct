@@ -50,23 +50,35 @@ void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
  */
 void get_bucket_info(struct map* m, struct bucket* b){
     int fd = open(b->fn, O_RDONLY);
-    void* lu_value = malloc(m->value_sz);
-    void* lu_key = malloc(m->key_sz);
+    int kvsz = m->value_sz + m->key_sz;
+    void* lu_kv = malloc(kvsz);
+    uint8_t kvzero[kvsz];
+
     /* some buckets may not have been created yet */
     if (fd == -1) {
         return;
     }
+
+    memset(kvzero, 0, kvsz);
     b->cap = lseek(fd, 0, SEEK_END) / (m->key_sz + m->value_sz);
     lseek(fd, 0, SEEK_SET);
-    for (int i = 0; i < b->cap; ++i) {
-        read(fd, lu_key, m->key_sz);
-        read key and value, if they're NULL, set n_entries!
-        or even just if key is NULL! a NLL value can be valid
-        could check both to be safe
-        once we can load them in, abstract it in a define
-        test it!
-        this just became VERY flexible
+    for (uint32_t i = 0; i < b->cap; ++i) {
+        memset(lu_kv, 0, kvsz);
+        read(fd, lu_kv, m->key_sz + m->value_sz);
+        if (!memcmp(lu_kv, kvzero, kvsz)) {
+            break;
+        }
+        ++b->n_entries;
+        /*read key and value, if they're NULL, set n_entries!*/
+        /*
+         * or even just if key is NULL! a NLL value can be valid
+         * could check both to be safe
+         * once we can load them in, abstract it in a define
+         * test it!
+         * this just became VERY flexible
+        */
     }
+    close(fd);
 }
 
 /* loads map into "memory" */
@@ -75,7 +87,7 @@ void load_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
               char* bucket_prefix,  uint16_t (*hashfunc)(void*)){
     init_map(m, name, n_buckets, key_sz, value_sz, bucket_prefix, hashfunc);
     for (int i = 0; i < m->n_buckets; ++i) {
-        m->buckets[i].
+        get_bucket_info(m, &m->buckets[i]);
     }
 }
 
