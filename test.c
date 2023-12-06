@@ -113,9 +113,11 @@ void write_load_test(int n){
      * YES!! it's an issue with loading!
      * big relief for some reason
      */
+    printf("msz: %i\n", m.m.buckets[0].n_entries);
+    printf("mlsz: %i\n", ml.m.buckets[0].n_entries);
     for (int i = 8192; i < n; ++i) {
-        printf("%i: %i\n", i, lookup_simpmap(&m, i, &found));
-        printf("%i: %i\n", i, lookup_simpmap(&ml, i, &found));
+        printf("%i:%i, %i\n", i, found, lookup_simpmap(&m, i, &found));
+        printf("%i:%i, %i\n", i, found, lookup_simpmap(&ml, i, &found));
     }
 }
 
