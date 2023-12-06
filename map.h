@@ -15,12 +15,13 @@
 //  register_map(ashmap, int, float, hashfunc)
 //
 //  defines a struct called ashmap that has functions that lookup
+#define N_BUCKETS 1024
 #define REGISTER_MAP(name, key_type, val_type, hash_func) \
     typedef struct {\
         struct map m;\
     }name;\
     void init_##name(name* m){\
-        init_map(&m->m, #name, 1, sizeof(key_type), sizeof(val_type), "autobkt", hash_func); \
+        init_map(&m->m, #name, N_BUCKETS, sizeof(key_type), sizeof(val_type), "autobkt", hash_func); \
     } \
     int insert_##name(name* m, key_type k, val_type v){ \
         return insert_map(&m->m, &k, &v); \
@@ -35,6 +36,9 @@
             *found = 1; \
         } \
         return ret; \
+    } \
+    void load_##name(name* m){ \
+        load_map(&m->m, #name, N_BUCKETS, sizeof(key_type), sizeof(val_type), "autobkt", hash_func); \
     }
 
 

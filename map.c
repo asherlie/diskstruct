@@ -194,6 +194,7 @@ void* lookup_map(struct map* m, void* key){
         }
         /* once resize in progress has completed, we know that another resize will not occur
          * until we decrement insertions_in_prog so we're safe to access the bucket in question
+         * TODO: this sets the flag so that consecutive calls to lookup_map() will fail
          */
         if (!atomic_flag_test_and_set(&b->resize_in_prog)) {
             resize_in_prog = 0;

@@ -83,7 +83,7 @@ void test_parallel(int threads, int insertions){
 }
 
 void test_struct(){
-    teststruct m;
+    teststruct m, mlookup;
     struct tstr data, ret;
     _Bool found;
 
@@ -100,6 +100,13 @@ void test_struct(){
     ret = lookup_teststruct(&m, 2795, &found);
 
     printf("ret.a: %i, ret.str: %s\n", ret.a, ret.str);
+
+    load_teststruct(&mlookup);
+
+    ret = lookup_teststruct(&mlookup, 2795, &found);
+    ret = lookup_teststruct(&mlookup, 2795, &found);
+
+    printf("from loaded - ret.a: %i, ret.str: %s\n", ret.a, ret.str);
 }
 
 void test_float(){
@@ -141,9 +148,9 @@ void check_lf(){
 }
 
 int main(){
-    check_lf();
+    /*check_lf();*/
     /*test_parallel(100, 100000000);*/
-    test_parallel(1, 100000);
-    /*test_struct();*/
+    /*test_parallel(1, 100000);*/
+    test_struct();
     /*test_float();*/
 }
