@@ -27,11 +27,14 @@
     } \
     val_type lookup_##name(name* m, key_type k, _Bool* found){ \
         void* tmp = lookup_map(&m->m, &k);\
-        if (!tmp) {\
-            *found = 0; \
+        val_type ret; \
+        memset(&ret, 0, sizeof(val_type)); \
+        *found = 0; \
+        if (tmp) {\
+            ret = *((val_type*)tmp); \
+            *found = 1; \
         } \
-        *found = 1; \
-        return *((val_type*)tmp); \
+        return ret; \
     }
 
 
