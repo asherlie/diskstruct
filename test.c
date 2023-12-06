@@ -103,8 +103,18 @@ void write_load_test(int n){
 
     load_simpmap(&ml);
 
-    /* TODO: for some reason 8192+ show up as 0 */
-    for (int i = 0; i < n; ++i) {
+    /* TODO: for some reason 8192+ show up as 0
+     * 8192 is a little too perfect, it's divides perfectly into 1024 (n_buckets)
+     * this problem maybe has to do with bucket 0
+     * aha! this coincides perfectly with the 8th insertion into bucket 0 - where n_entries == 8 == cap
+     * this is a problem with resizing, does truncate() not keep things intact properly?
+     * it also may be an issue with lookups, maybe grow_to is leaving some NULL entries somewhere?
+     *
+     * YES!! it's an issue with loading!
+     * big relief for some reason
+     */
+    for (int i = 8192; i < n; ++i) {
+        printf("%i: %i\n", i, lookup_simpmap(&m, i, &found));
         printf("%i: %i\n", i, lookup_simpmap(&ml, i, &found));
     }
 }
