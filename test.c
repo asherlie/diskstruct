@@ -105,6 +105,7 @@ void test_struct(){
 
     ret = lookup_teststruct(&mlookup, 2795, &found);
     ret = lookup_teststruct(&mlookup, 2795, &found);
+    ret = lookup_teststruct(&mlookup, 2795, &found);
 
     printf("from loaded - ret.a: %i, ret.str: %s\n", ret.a, ret.str);
 }

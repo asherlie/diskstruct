@@ -39,6 +39,7 @@ void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
         m->buckets[i].cap = 0;
         m->buckets[i].n_entries = 0;
         m->buckets[i].insertions_in_prog = 0;
+        m->buckets[i].resize_in_prog = 0;
         /*tmp_bucket = fopen(m->buckets[i].fn, "w");*/
         /*m->buckets[i].cap = 1;*/
         /*ftruncate(fileno(tmp_bucket), entrysz);*/
@@ -134,9 +135,9 @@ int insert_map(struct map* m, void* key, void* value){
             ;
         }
         /* lookup_map() will wait for this flag to be cleared */
-        atomic_flag_test_and_set(&b->resize_in_prog);
+        atomic_store(&b->resize_in_prog, 1);
         grow_file(b->fn, grow_to);
-        atomic_flag_clear(&b->resize_in_prog);
+        atomic_store(&b->resize_in_prog, 0);
         atomic_store(&b->cap, grow_to);
     }
     atomic_fetch_add(&b->insertions_in_prog, 1);
@@ -194,9 +195,8 @@ void* lookup_map(struct map* m, void* key){
         }
         /* once resize in progress has completed, we know that another resize will not occur
          * until we decrement insertions_in_prog so we're safe to access the bucket in question
-         * TODO: this sets the flag so that consecutive calls to lookup_map() will fail
          */
-        if (!atomic_flag_test_and_set(&b->resize_in_prog)) {
+        if (!atomic_load(&b->resize_in_prog)) {
             resize_in_prog = 0;
         }
     }

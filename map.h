@@ -97,7 +97,7 @@ struct bucket{
     _Atomic uint32_t n_entries;
     _Atomic uint32_t cap;
     _Atomic uint8_t insertions_in_prog;
-    atomic_flag resize_in_prog;
+    _Atomic _Bool resize_in_prog;
     /*
      * should this info be stored? may be better to just 
      * keep track of it in file header only
