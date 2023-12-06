@@ -44,8 +44,41 @@ void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
         /*ftruncate(fileno(tmp_bucket), entrysz);*/
     }
 }
-/* loads map into memory */
-void load_map(struct map* m, char* name, uint32_t key_sz, uint32_t value_sz, char* bucket_prefix);
+
+/* these two functions are not thread safe and thus should only
+ * be called on startup
+ */
+void get_bucket_info(struct map* m, struct bucket* b){
+    int fd = open(b->fn, O_RDONLY);
+    void* lu_value = malloc(m->value_sz);
+    void* lu_key = malloc(m->key_sz);
+    /* some buckets may not have been created yet */
+    if (fd == -1) {
+        return;
+    }
+    b->cap = lseek(fd, 0, SEEK_END) / (m->key_sz + m->value_sz);
+    lseek(fd, 0, SEEK_SET);
+    for (int i = 0; i < b->cap; ++i) {
+        read(fd, lu_key, m->key_sz);
+        read key and value, if they're NULL, set n_entries!
+        or even just if key is NULL! a NLL value can be valid
+        could check both to be safe
+        once we can load them in, abstract it in a define
+        test it!
+        this just became VERY flexible
+    }
+}
+
+/* loads map into "memory" */
+// TODO: define this in #define as well
+void load_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz,
+              char* bucket_prefix,  uint16_t (*hashfunc)(void*)){
+    init_map(m, name, n_buckets, key_sz, value_sz, bucket_prefix, hashfunc);
+    for (int i = 0; i < m->n_buckets; ++i) {
+        m->buckets[i].
+    }
+}
+
 /* k/v size must be consistent with struct map's entries */
 int insert_map(struct map* m, void* key, void* value){
     uint16_t idx = m->hashfunc(key) % m->n_buckets;
