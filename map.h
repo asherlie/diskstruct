@@ -3,13 +3,6 @@
 #include <stdatomic.h>
 #include <linux/limits.h>
 
-// this should just create functions, not declare any variables
-// it'll create functions for a specific key/value type that can be used on a fresh struct map!
-//
-// i want it to work like:
-//  register_map(ashmap, int, float, hashfunc)
-//
-//  defines a struct called ashmap that has functions that lookup
 #define N_BUCKETS 1024
 #define REGISTER_MAP(name, key_type, val_type, hash_func) \
     typedef struct {\
@@ -36,46 +29,6 @@
         load_map(&m->m, #name, N_BUCKETS, sizeof(key_type), sizeof(val_type), "autobkt", hash_func); \
     }
 
-
-#if 0
-#define INIT_MAP(name, key_type, val_type, hash_func)                                        \
-    struct map AUTOINIT_MAP_##name_##key_type##val_type;                                     \
-                                                                                             \
-    init_map(&AUTOINIT_MAP_##name_##key_type##val_type, #name#key_type#val_type, 1024,       \
-        sizeof(key_type), sizeof(val_type), "autobkt", hash_func);                           \
-    int insert_##name(key_type k, val_type v){                                               \
-        return insert_map(&AUTOINIT_MAP_##name_##key_type##val_type, (void*)&k, (void*)&v);  \
-    }                                                                                        \
-    (void)AUTOINIT_MAP_##name_##key_type##val_type;                                          \
-    (void)insert_##name;
-#endif
-
-
-/*
- * maps will take this structure on disk
- * can fwrite() be used?
- *
- * should i simulate pointers by pointing to a file offset?
- *
- * option a: 
- *  file should be vastly overallocated at first, leaving room for entries
- * option b:
- *  fileS should be created as needed, buckets can be separated by file which makes this much more modular
- *  FILE*s to each bucket will be kept in memory
- *  this will be modular and easy to realloc a single bucket only
- *  there will be a main file that stores struct map info - n_buckets, element_sz, cap for each bucket and sz for each
- *  but the real insertions will be made to data files
- *
- *  these files will all be written to a directory specified when init_fmap() is called
- */
-
-struct entry{
-    /* key/value are cast to void* */
-    // wait, do we ever need to even store these in memory?
-    // no - this can just be what's returned 
-    void* key;
-    void* value;
-};
 
 struct bucket{
     char fn[PATH_MAX];
