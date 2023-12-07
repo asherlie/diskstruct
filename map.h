@@ -32,16 +32,7 @@
 
 struct bucket{
     char fn[PATH_MAX];
-    /* fp is set to header, threads will open new FPs to do their actual writes
-     * a non-NULL fp indicates that the bucket in question has an associated file/has entries already
-     */
-    // no pointers are kept
-    //FILE* header_fp;
 
-    /* this replaces the header in the actual bucket file, n_entries will be made
-     * clear upon finding the first key of NULL
-     * capacity will be apparent from filesz / (key_sz+value_sz)
-     */
     _Atomic uint32_t n_entries;
     _Atomic uint32_t cap;
     _Atomic uint8_t insertions_in_prog;
@@ -179,12 +170,8 @@ struct map{
     uint32_t key_sz, value_sz;
 
     uint16_t (*hashfunc)(void*);
-    /* each struct entry* provides info about a FILE* */
-    //struct entry** buckets;
 
     struct bucket* buckets;
-    //char** buckets_fn;
-    //FILE** buckets_fp;
 };
 
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
