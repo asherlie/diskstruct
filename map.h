@@ -3,11 +3,6 @@
 #include <stdatomic.h>
 #include <linux/limits.h>
 
-/*#define DEF_FUNC(name, ke*/
-
-/* aha! the problem is where it's being called! of course i can't just call a function from nowhere
- * this must be two macros - create map, which creates our init function, insert function
- */
 // this should just create functions, not declare any variables
 // it'll create functions for a specific key/value type that can be used on a fresh struct map!
 //

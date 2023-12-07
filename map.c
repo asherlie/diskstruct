@@ -18,8 +18,6 @@ _Bool grow_file(char* fn, uint32_t grow_to){
 
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
               char* bucket_prefix, uint16_t (*hashfunc)(void*)){
-    /*FILE* tmp_bucket;*/
-    /*uint32_t entrysz = key_sz + value_sz;*/
 
     strcpy(m->name, name);
     strcpy(m->bucket_prefix, bucket_prefix);
@@ -31,18 +29,10 @@ void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
     mkdir(m->name, 0777);
     for(int i = 0; i < m->n_buckets; ++i){
         sprintf(m->buckets[i].fn, "%s/%s_%i.hbk", m->name, m->bucket_prefix, i);
-        /*
-         * does this work? will it be resized to be nonzero size using above logic
-         * if this is true?
-         * atomic incrememt, returns n_entries of 0! == cap, tada!
-        */
         m->buckets[i].cap = 0;
         m->buckets[i].n_entries = 0;
         m->buckets[i].insertions_in_prog = 0;
         m->buckets[i].resize_in_prog = 0;
-        /*tmp_bucket = fopen(m->buckets[i].fn, "w");*/
-        /*m->buckets[i].cap = 1;*/
-        /*ftruncate(fileno(tmp_bucket), entrysz);*/
     }
 }
 
