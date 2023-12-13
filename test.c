@@ -98,7 +98,7 @@ void write_load_test(int n){
 
     init_simpmap(&m);
     for (int i = 0; i < n; ++i) {
-        insert_simpmap(&m, i, i);
+        insert_simpmap(&m, i+1, i);
     }
 
     load_simpmap(&ml);
@@ -113,12 +113,20 @@ void write_load_test(int n){
      * YES!! it's an issue with loading!
      * big relief for some reason
      */
+    /* this is printing section, test section comes after */
     printf("msz: %i\n", m.m.buckets[0].n_entries);
     printf("mlsz: %i\n", ml.m.buckets[0].n_entries);
-    for (int i = 8192; i < n; ++i) {
+    /*for (int i = 8192; i < n; ++i) {*/
+    for (int i = 0; i < n; ++i) {
         printf("%i:%i, %i\n", i, found, lookup_simpmap(&m, i, &found));
         printf("%i:%i, %i\n", i, found, lookup_simpmap(&ml, i, &found));
     }
+    for (int i = 0; i < n; ++i) {
+        if (memcmp(&m.m.buckets[i], &ml.m.buckets[i], sizeof(struct bucket))) {
+            printf("MISMATCH FOUND FOR BUCKET %i \"%s\"\n", i, m.m.buckets[i].fn);
+        }
+    }
+
 }
 
 void test_struct(){
@@ -191,7 +199,8 @@ int main(){
     /*check_lf();*/
     /*test_parallel(100, 100000000);*/
     /*test_load_parallel();*/
-    write_load_test(8200);
+    /*write_load_test(8200);*/
+    write_load_test(1);
     /*test_parallel(1, 100000);*/
     /*test_struct();*/
     /*test_float();*/

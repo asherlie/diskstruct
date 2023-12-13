@@ -3,7 +3,7 @@
 #include <stdatomic.h>
 #include <linux/limits.h>
 
-#define N_BUCKETS 1024
+#define N_BUCKETS 1
 #define REGISTER_MAP(name, key_type, val_type, hash_func) \
     typedef struct {\
         struct map m;\
