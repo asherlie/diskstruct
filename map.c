@@ -92,6 +92,18 @@ void get_bucket_info(struct map* m, struct bucket* b){
              * ugh, each insertion also must check for an existing key
              * we could set a variable to check dupes which will allow much faster insretions if disabled
              *
+             * finalized plan is:
+             *  make this behave like a true hashmap - map[i] = x; map[i] = y; should result with ONLY map[i] == y
+             *
+             * then, to fix load(), we will read entries until two consecutive NULL/NULL pairs are found
+             * this may, however, lead to an issue where a real NULL/NULL pair is inserted into the last idx
+             * of a bucket and is ignored
+             *
+             * this can just be fixed by having a byte prepended to each bucket idx - it'll be uint8_t,keysz,valsz
+             * uint8_t will just be a nonzero char, this way we can guarantee that only once we find a TRUE NULL entry
+             * will we be done iterating. as a matter of fact, this should be written before true hashmap functionality
+             *
+             *
              */
             printf("found a NULL entry at idx %i for bucket: \"%s\"\n", i, b->fn);
             break;
