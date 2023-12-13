@@ -26,6 +26,7 @@ void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
     m->value_sz = value_sz;
     m->n_buckets = n_buckets;
     m->buckets = calloc(sizeof(struct bucket), n_buckets);
+    /*does this overwrite if already exists?*/
     mkdir(m->name, 0777);
     for(int i = 0; i < m->n_buckets; ++i){
         sprintf(m->buckets[i].fn, "%s/%s_%i.hbk", m->name, m->bucket_prefix, i);
@@ -51,12 +52,48 @@ void get_bucket_info(struct map* m, struct bucket* b){
     }
 
     memset(kvzero, 0, kvsz);
-    b->cap = lseek(fd, 0, SEEK_END) / (m->key_sz + m->value_sz);
+    b->cap = lseek(fd, 0, SEEK_END) / kvsz;
     lseek(fd, 0, SEEK_SET);
     for (uint32_t i = 0; i < b->cap; ++i) {
         memset(lu_kv, 0, kvsz);
-        read(fd, lu_kv, m->key_sz + m->value_sz);
+        printf("read returned: %li\n", read(fd, lu_kv, kvsz));
         if (!memcmp(lu_kv, kvzero, kvsz)) {
+            /*
+             * AHA! i think there's not a bug it's just written badly!!
+             * obviously this isn't a good way to detect a problem!
+             * if key and value are integers and are set to 0 then it'll appear NULL!!
+             * test this by setting key or value to nonzero!!
+            */
+            /* this is just about solved, now i just need a solution LOL
+             * easy! two consecutive NULL/NULL pairs will indicate the end!
+             * this will never occur in reality, as there cannot be two identical entries
+             * oh, actually there can be
+             * there's no duplicate checking
+             *
+             * could always add another byte but would be very inefficient to do so for every
+             * bucket
+             *
+             * it'd be nice if this was implicit
+             * if we could create some pattern during insertion
+             *
+             * actually! the above would work, but not just two consecutive entries!
+             * we must reach a point where all the remaining entries are NULL/NULL pairs
+             * only then will we know
+             *
+             * actually one last time, this is all stupid. if this behaved like a real hashmap we would
+             * not have this issue.
+             * we should have proper behavior of only one entry per key
+             * in this case, there will be only one N/N
+             * overwriting must be possible
+             *
+             * this is doable but difficult, each bucket (or bucket offset even?) should have its own 
+             * atomic variable that we use to spinlock in the event of an ovewrite
+             * can we reuse an existing var?
+             * ugh, each insertion also must check for an existing key
+             * we could set a variable to check dupes which will allow much faster insretions if disabled
+             *
+             */
+            printf("found a NULL entry at idx %i for bucket: \"%s\"\n", i, b->fn);
             break;
         }
         ++b->n_entries;
