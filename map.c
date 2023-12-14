@@ -103,6 +103,80 @@ void get_bucket_info(struct map* m, struct bucket* b){
              * uint8_t will just be a nonzero char, this way we can guarantee that only once we find a TRUE NULL entry
              * will we be done iterating. as a matter of fact, this should be written before true hashmap functionality
              *
+             * a better way would be to have a sealing function that allows reading later
+             * this function will just truncate bucket files to their exact size!
+             * this way we can just assume cap == n_entries upon loading
+             *
+             * files may be corrupted, though, if a crash occurs before cleanup
+             *  this is a tough problem, for now i'm going to use the truncation design
+             *  this allows us to minimize footprint of entries by not adding a byte for each one
+             *
+             * extra byte:
+             *  no need to call a function before exiting after insertion
+             *  but requires taking up more space
+             *  crashes will not leave file in a bad state, worst case is some garbage entries
+             *  from partial insertions
+             *
+             * sealing function:
+             *  file will be unloadable if not sealed, could be in a bad state after crashes
+             *  worst case is many NULL/NULL entries
+             *
+             * could use a combo of both designs for now, add TODOs to remove one
+             * when loading, can set cap to size of file, iterate until we find a NULL/NULL, then set
+             * sz to i
+             * this way it'll be correct nomatter what
+             *
+             * okay, aside from the above two options, i may have just thought of the perfect solution...
+             * is there a reason we can't just have a SEPARATE FILE for each bucket idx? is there overhead associated with many small files vs. 
+             * few large ones
+             *
+             * idx = hash(data)
+             * bucket_idx = atomic_()
+             * fn = idx_bucket_idx
+             *
+             * loading becomes trivial because we can just check if a file exists given our naming convention
+             * the issue is knowing how high to iterate, some writes may have failed
+             * do we stop once we find a gap? a later inserion idx may have completed
+             * i guess it's alright to miss a few entries in this edge case
+             * the overhead of opening many file descriptors might prove to be too much
+             *
+             *
+             * TODO: see if test is working with 1-indexing!!
+             * if not, damn
+             *
+             * solve this problem first and THEN solve the hashmap reality problem
+             *
+             * the real difference between the two original solutions is whether or not data will
+             * be corrupted during writing for reading
+             * with extra byte we can load() while a diff process is writing
+             * either way, though, a loading gap will be needed to ensure nothing is corrupted
+             * writes are not atomic and resizing certainly isn't either
+             *
+             *  maybe i can define some kind of primitive to do this, actually i can probably use SYS V messages
+             *  we can either insert into a svq as a load() request and wait until this message is removed!
+             *      this will allow us to request an insertion pause from any insertion threads that gives
+             *      enough time to load()
+             *
+             *  interesting, could also have a daemon that's always running that contains our thread safety mechanisms
+             *  it will hold our structs, this will be a relatively simple change - it'll just move the in-memory portion
+             *  of our storage to a process that is started with systemctl
+             *  it may be slower unfortunately, though, i'd need to add an interface to talk to this process
+             *  maybe not, actually, we could just keep all insertions in that proc, lookup/write will just recv
+             *  params needed over a unix socket
+             *  we can then just actually seal before load(), load() will just be what this process does on startup
+             *
+             *      init_map() can maybe fork() and create this process, each unique map will create a new process
+             *
+             *  maybe scrap all of the above, write a load_map_readonly() function that allows us to load
+             *  map into "memory" and upon each lookup we can check for NULL/NULL. this is the best solution
+             *  because it allows us to load as we go with no resizing needed
+             *  the only issue is partial writes
+             *  but this can be remedied with the same thing mentioned above, svq load requests
+             *  not so elegant though 
+             *  maybe a better strat would be to use unix sockets to communicate n_entries of each bucket
+             *  nvm - 
+             *      so, i should use the extra byte strat and always ensure that there's a NULL termination
+             *      after each bucket, this will be easy - i can just always overalloc by 1 entry
              *
              */
             printf("found a NULL entry at idx %i for bucket: \"%s\"\n", i, b->fn);
@@ -203,6 +277,12 @@ int insert_map(struct map* m, void* key, void* value){
     */
     return retries;
 }
+
+/*
+ * void seal_map(struct map* m){
+ *     for
+ * }
+*/
 
 void* lookup_map(struct map* m, void* key){
     uint16_t idx = m->hashfunc(key) % m->n_buckets;
