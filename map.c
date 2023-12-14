@@ -8,10 +8,14 @@
 
 #include "map.h"
 
+// wow, found the issue, this function is overwriting earlier contents of file!
+// maybe it has to do with the flags passed to open? trying without O_CREAT now
+// omg, seems that the problem was O_TRUNC!! has a totally diff meaning for open()
 _Bool grow_file(char* fn, uint32_t grow_to){
     _Bool ret;
-    int fd = open(fn, O_TRUNC | O_CREAT | O_WRONLY, 0666);
+    int fd = open(fn, O_CREAT | O_WRONLY, 0666); 
     ret = !ftruncate(fd, grow_to);
+    fsync(fd);
     close(fd);
     return ret;
 }
@@ -42,8 +46,8 @@ void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
  */
 void get_bucket_info(struct map* m, struct bucket* b){
     int fd = open(b->fn, O_RDONLY);
-    int kvsz = m->value_sz + m->key_sz;
-    void* lu_kv = malloc(kvsz);
+    int kvsz = m->value_sz + m->key_sz + 1;
+    uint8_t lu_kv[kvsz];
     uint8_t kvzero[kvsz];
 
     /* some buckets may not have been created yet */
@@ -207,12 +211,13 @@ void load_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
 
 /* k/v size must be consistent with struct map's entries */
 int insert_map(struct map* m, void* key, void* value){
-    uint16_t idx = m->hashfunc(key) % m->n_buckets;
+    uint16_t idx = m->hashfunc(key) % m->n_buckets, entrysz = m->key_sz + m->value_sz + 1;
     uint32_t bucket_idx, bucket_cap;
     uint32_t bucket_offset;
     struct bucket* b = &m->buckets[idx];
     int fd;
     int retries = -1;
+    const uint8_t filler_byte = 'Z';
 
 
 /*
@@ -225,7 +230,7 @@ int insert_map(struct map* m, void* key, void* value){
  *     so i gues cap should be atomically loaded! right after retry:
 */
     bucket_idx = atomic_fetch_add(&b->n_entries, 1);
-    bucket_offset = bucket_idx * (m->key_sz + m->value_sz);
+    bucket_offset = bucket_idx * entrysz;
     /* retrying after getting idx for now
      * this way we never have a corrupted n_entries and we can always set it
      * using the above - eventually we'll either reach a point where idx == cap
@@ -240,7 +245,14 @@ int insert_map(struct map* m, void* key, void* value){
     }
     /* resize bucket */
     if (bucket_idx == bucket_cap) {
-        uint32_t grow_to = bucket_cap ? bucket_cap * 2 : m->value_sz + m->key_sz;
+        /*wow, are we using int bucket_cap when it should be bytges bucket cap?*/
+        uint32_t grow_to = (bucket_cap ? bucket_cap * 2 : 1) * entrysz;
+        /*
+         * i think the problem is that we're resizing too late
+         * and writing garbage to after the end of our file
+         * which is somehow working but is zeroed after grow_to()
+        */
+        printf("growing file to %i bytes\n", grow_to);
         /* wait until all current insertions are finished / all FILE*s are closed
          * before beginning file resize
          */
@@ -259,8 +271,10 @@ int insert_map(struct map* m, void* key, void* value){
     fd = open(b->fn, O_WRONLY);
     lseek(fd, bucket_offset, SEEK_SET);
     /* TODO: think about endianness, would help for compatibility between machines */
+    write(fd, &filler_byte, 1);
     write(fd, key, m->key_sz);
     write(fd, value, m->value_sz);
+    fsync(fd);
     close(fd);
     /* this is only relevant for resizing of buckets which is why we decrement AFTER fclose()
      * concurrent writes to different offsets of one bucket are perfectly fine
@@ -325,7 +339,9 @@ void* lookup_map(struct map* m, void* key){
     /* TODO: allow loading of a specified number of k/v pairs into memory to speed up lookups */
 
     for (uint32_t i = 0; i < n_entries; ++i) {
-        lseek(fd, i * (m->key_sz + m->value_sz), SEEK_SET);
+        // no need to seek, read()ing is seeking
+        /*lseek(fd, i * (m->key_sz + m->value_sz + 1), SEEK_SET);*/
+        read(fd, lu_key, 1);
         read(fd, lu_key, m->key_sz);
         read(fd, lu_value, m->value_sz);
         if (!memcmp(key, lu_key, m->key_sz)) {
