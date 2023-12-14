@@ -121,9 +121,11 @@ void write_load_test(int n){
         printf("%i:%i, %i\n", i, found, lookup_simpmap(&m, i, &found));
         printf("%i:%i, %i\n", i, found, lookup_simpmap(&ml, i, &found));
     }
-    for (int i = 0; i < n; ++i) {
+    for (int i = 0; i < m.m.n_buckets; ++i) {
+        // seems that cap is unequal, why is this? why is cap lower upon loading()
         if (memcmp(&m.m.buckets[i], &ml.m.buckets[i], sizeof(struct bucket))) {
             printf("MISMATCH FOUND FOR BUCKET %i \"%s\"\n", i, m.m.buckets[i].fn);
+            printf("%i == %i, %i == %i\n", m.m.buckets[i].n_entries, ml.m.buckets[i].n_entries, m.m.buckets[i].cap, ml.m.buckets[i].cap);
         }
     }
 
@@ -200,7 +202,8 @@ int main(){
     /*test_parallel(100, 100000000);*/
     /*test_load_parallel();*/
     /*write_load_test(8200);*/
-    write_load_test(1);
+    // this works at 9, breaks at 10, issue is one additional resize
+    write_load_test(119);
     /*test_parallel(1, 100000);*/
     /*test_struct();*/
     /*test_float();*/

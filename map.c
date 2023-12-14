@@ -8,9 +8,6 @@
 
 #include "map.h"
 
-// wow, found the issue, this function is overwriting earlier contents of file!
-// maybe it has to do with the flags passed to open? trying without O_CREAT now
-// omg, seems that the problem was O_TRUNC!! has a totally diff meaning for open()
 _Bool grow_file(char* fn, uint32_t grow_to){
     _Bool ret;
     int fd = open(fn, O_CREAT | O_WRONLY, 0666); 
@@ -291,12 +288,6 @@ int insert_map(struct map* m, void* key, void* value){
     */
     return retries;
 }
-
-/*
- * void seal_map(struct map* m){
- *     for
- * }
-*/
 
 void* lookup_map(struct map* m, void* key){
     uint16_t idx = m->hashfunc(key) % m->n_buckets;
