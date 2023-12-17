@@ -92,15 +92,19 @@ void test_load_parallel(){
     }
 }
 
-void write_load_test(int n){
+void write_load_test(int n, _Bool pinsert){
     simpmap m, ml;
     _Bool found;
 
     init_simpmap(&m);
     for (int i = 0; i < n; ++i) {
-        insert_simpmap(&m, i+1, i);
+        if (pinsert) {
+            pinsert_simpmap(&m, i+1, i);
+        }
+        else insert_simpmap(&m, i+1, i);
     }
 
+    return;
     load_simpmap(&ml);
 
     /* TODO: for some reason 8192+ show up as 0
@@ -203,8 +207,36 @@ int main(){
     /*test_load_parallel();*/
     /*write_load_test(8200);*/
     // this works at 9, breaks at 10, issue is one additional resize
-    write_load_test(119);
+    write_load_test(1190, 1);
     /*test_parallel(1, 100000);*/
     /*test_struct();*/
     /*test_float();*/
 }
+/*
+ * TODO: in order
+ *  write abstraction for multithreaded insertion
+ *  make this behave like a real hashmap (sometimes)
+ *      take in an arg for expecting duplicates
+ *
+ *      lookup() can potentially optionally update existing entries!! if key matches, update value
+ *      if value != NULL
+ *
+ *      does this solve all concurrency issues? i think there are still issues if we return and 
+ *      lookup() did not insert, but another thread may have inserted the same key in that time
+ *
+ *        think about this when not tired, can this be worked in a way where lookup() handles
+ *        all the insertion of duplicate entries / overwriting?
+ *
+ *        then, if lookup returns NULL, we insert regularly. this is where issues arise
+ *        unless the atomics are used in a way that guarantees that during lookup()  no writes are in progress
+ *        which isn't true i believe, since we just pick an upper bound for n_entries based on a momentary
+ *        stop in insertions
+ *
+ *        TODO: look into logic to make this work
+ *
+ *        insert(k, v):
+ *          lookup(k, v) // update existing if key in map
+ *          if not exists:
+ *              inner_insert()
+ *
+*/
