@@ -17,7 +17,8 @@
         return insert_map(&m->m, &k, &v); \
     } \
     void pinsert_##name(name* m, key_type k, val_type v){ \
-        insert_ins_queue(&m->m.iq, &k, &v); \
+        /*insert_ins_queue(&m->m.iq, &k, &v);*/ \
+        pinsert_map(&m->m, &k, &v); \
     } \
     val_type lookup_##name(name* m, key_type k, _Bool* found){ \
         void* tmp = lookup_map(&m->m, &k);\
@@ -168,6 +169,13 @@ struct bucket{
      */
 };
 
+struct parallel_insertion_helper{
+    struct ins_queue iq;
+    _Bool ready;
+    int n_threads;
+    pthread_t* pth;
+};
+
 struct map{
     char name[PATH_MAX/2];
     char bucket_prefix[(PATH_MAX/2)-10];
@@ -179,7 +187,7 @@ struct map{
     struct bucket* buckets;
 
     /* this will be initialized in init_map() and will only be used by insert_map_parallel() */
-    struct ins_queue iq;
+    struct parallel_insertion_helper pih;
 };
 
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
@@ -189,4 +197,5 @@ void load_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
               char* bucket_prefix,  uint16_t (*hashfunc)(void*));
 /* k/v size must be consistent with struct map's entries */
 int insert_map(struct map* m, void* key, void* value);
+int pinsert_map(struct map* m, void* key, void* value);
 void* lookup_map(struct map* m, void* key);

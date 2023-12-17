@@ -1,3 +1,4 @@
+// TODO: add this to my pinned repos
 #include <stdatomic.h>
 #include <string.h>
 #include <stdlib.h>
@@ -17,10 +18,18 @@ _Bool grow_file(char* fn, uint32_t grow_to){
     return ret;
 }
 
+void init_pih(struct parallel_insertion_helper* pih, int queue_cap, int n_threads){
+    pih->ready = 0;
+    init_ins_queue(&pih->iq, queue_cap);
+    pih->n_threads = n_threads;
+    pih->pth = malloc(sizeof(pthread_t)*n_threads);
+}
+
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
               char* bucket_prefix, uint16_t (*hashfunc)(void*)){
 
-    init_ins_queue(&m->iq, 10000);
+    init_pih(&m->pih, 10000, 100);
+    m->pih.ready = 0;
     strcpy(m->name, name);
     strcpy(m->bucket_prefix, bucket_prefix);
     m->hashfunc = hashfunc;
@@ -352,4 +361,15 @@ void* lookup_map(struct map* m, void* key){
     }
 
     return lu_value;
+}
+
+/* spawns popping threads if !ready, inserts into ins_queue */
+int pinsert_map(struct map* m, void* key, void* value){
+    return insert_map(m, key, value);
+}
+
+void* parallel_insertion_thread(void* vmap){
+    struct map* m = vmap;
+    (void)m;
+    return NULL;
 }
