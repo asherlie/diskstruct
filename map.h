@@ -3,7 +3,9 @@
 #include <stdatomic.h>
 #include <linux/limits.h>
 
-#define N_BUCKETS 1
+#include "ins_queue.h"
+
+#define N_BUCKETS 10
 #define REGISTER_MAP(name, key_type, val_type, hash_func) \
     typedef struct {\
         struct map m;\
@@ -13,6 +15,9 @@
     } \
     int insert_##name(name* m, key_type k, val_type v){ \
         return insert_map(&m->m, &k, &v); \
+    } \
+    void pinsert_##name(name* m, key_type k, val_type v){ \
+        insert_ins_queue(&m->m.iq, &k, &v); \
     } \
     val_type lookup_##name(name* m, key_type k, _Bool* found){ \
         void* tmp = lookup_map(&m->m, &k);\
@@ -172,6 +177,9 @@ struct map{
     uint16_t (*hashfunc)(void*);
 
     struct bucket* buckets;
+
+    /* this will be initialized in init_map() and will only be used by insert_map_parallel() */
+    struct ins_queue iq;
 };
 
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
