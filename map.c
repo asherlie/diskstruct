@@ -20,6 +20,7 @@ _Bool grow_file(char* fn, uint32_t grow_to){
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
               char* bucket_prefix, uint16_t (*hashfunc)(void*)){
 
+    init_ins_queue(&m->iq, 10000);
     strcpy(m->name, name);
     strcpy(m->bucket_prefix, bucket_prefix);
     m->hashfunc = hashfunc;

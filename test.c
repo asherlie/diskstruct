@@ -92,6 +92,17 @@ void test_load_parallel(){
     }
 }
 
+/*
+ * i can abstract away even the thread activity by doing the following:
+ *     first call to pinsert() will create threads to pop from circq and insert into map
+ * 
+ *     sync_pinsertions() will join all write threads and will
+ * 
+ *     this allows for a mixture of calls to pinsert() and traditional insert()
+ *     after a call to sync_pinsertions(), more pinsert() calls can be made and will work as expected
+ *         this is achieved because sync_pinsertions() just puts the state of the map back to pre thread creation
+*/
+
 void write_load_test(int n, _Bool pinsert){
     simpmap m, ml;
     _Bool found;
