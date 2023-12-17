@@ -101,6 +101,21 @@ void test_load_parallel(){
  *     this allows for a mixture of calls to pinsert() and traditional insert()
  *     after a call to sync_pinsertions(), more pinsert() calls can be made and will work as expected
  *         this is achieved because sync_pinsertions() just puts the state of the map back to pre thread creation
+ *
+ *  actually might be better to have this be separate from the other functionality of
+ *  waiting for insertions, we always know exactly how many insertions are queued because each pinsert and insert
+ *  is called on the same struct map, we can therefore just have a function that waits until this number is as expected
+ *
+ *  is there still a use for the sync_pinsertions() model to join write threads?
+ *  there could be i suppose, still write it. first call to pinsert() will still create ins threads
+ *  we will then call a function, maybe rename the above and use that name, this function will wait until all pending writes
+ *  are flushed/completed
+ *
+ *  sync_pinsertions() will be the function that waits until max_queue_length == map_length
+ *  exit_insertion_threads() will be the function that sets the exit flag and waits to join all pthread_ts
+ *
+ *
+ *  TODO: n insertion threads should be variable, changed with a function 
 */
 
 void write_load_test(int n, _Bool pinsert){
