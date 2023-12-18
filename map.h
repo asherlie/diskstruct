@@ -14,9 +14,11 @@
         init_map(&m->m, #name, N_BUCKETS, sizeof(key_type), sizeof(val_type), "autobkt", hash_func); \
     } \
     int insert_##name(name* m, key_type k, val_type v){ \
+        atomic_fetch_add(&m->m.nominal_insertions, 1); \
         return insert_map(&m->m, &k, &v); \
     } \
     void pinsert_##name(name* m, key_type k, val_type v){ \
+        atomic_fetch_add(&m->m.nominal_insertions, 1); \
         /*insert_ins_queue(&m->m.iq, &k, &v);*/ \
         pinsert_map(&m->m, &k, &v); \
     } \
@@ -186,6 +188,9 @@ struct map{
 
     struct bucket* buckets;
 
+    _Atomic uint32_t nominal_insertions;
+    _Atomic uint32_t total_insertions;
+
     /* this will be initialized in init_map() and will only be used by insert_map_parallel() */
     struct parallel_insertion_helper pih;
 };
@@ -197,5 +202,8 @@ void load_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
               char* bucket_prefix,  uint16_t (*hashfunc)(void*));
 /* k/v size must be consistent with struct map's entries */
 int insert_map(struct map* m, void* key, void* value);
-void pinsert_map(struct map* m, void* key, void* value);
 void* lookup_map(struct map* m, void* key);
+
+void pinsert_map(struct map* m, void* key, void* value);
+void sync_pinsertions(struct map* m);
+void stop_pinsert_threads(struct map* m);

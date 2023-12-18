@@ -137,6 +137,8 @@ void write_load_test(int n, _Bool pinsert){
         else insert_simpmap(&m, i+1, i);
     }
 
+    sync_pinsertions(&m.m);
+
     return;
     load_simpmap(&ml);
 

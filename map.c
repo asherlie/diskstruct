@@ -29,7 +29,7 @@ void init_pih(struct parallel_insertion_helper* pih, int queue_cap, int n_thread
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
               char* bucket_prefix, uint16_t (*hashfunc)(void*)){
 
-    init_pih(&m->pih, 10000, 100);
+    init_pih(&m->pih, 10000, 40);
     m->pih.ready = 0;
     strcpy(m->name, name);
     strcpy(m->bucket_prefix, bucket_prefix);
@@ -38,6 +38,7 @@ void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
     m->value_sz = value_sz;
     m->n_buckets = n_buckets;
     m->buckets = calloc(sizeof(struct bucket), n_buckets);
+    m->nominal_insertions = m->total_insertions = 0;
     /*does this overwrite if already exists?*/
     mkdir(m->name, 0777);
     for(int i = 0; i < m->n_buckets; ++i){
@@ -297,6 +298,7 @@ int insert_map(struct map* m, void* key, void* value){
      *     the first insertion thread will get idx == cap upon calling atomic_inc!
      *     no special case needed :)
     */
+    atomic_fetch_add(&m->total_insertions, 1);
     return retries;
 }
 
@@ -395,7 +397,10 @@ void maybe_spawn_pinsert_threads(struct map* m){
 }
 
 void sync_pinsertions(struct map* m){
-    /*m->pih.*/
+    uint32_t nom_ins = atomic_load(&m->nominal_insertions);
+    while (atomic_load(&m->total_insertions) < nom_ins) {
+        ;
+    }
 }
 
 void pinsert_thread_cleanup(struct map* m){
@@ -407,6 +412,10 @@ void pinsert_thread_cleanup(struct map* m){
 }
 
 /* init_ins_queue can be recalled after this to resume regular operation */
+/*can this have an option to reset and declare a new number of threads?
+ * best not to i think, this is an edge use case and the user can achieve
+ * this with the current impl. just by using init_ins_queue()
+ */
 void stop_pinsert_threads(struct map* m){
     m->pih.iq.exit = 1;
     pinsert_thread_cleanup(m);
