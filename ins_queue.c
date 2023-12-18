@@ -17,6 +17,10 @@ void init_ins_queue(struct ins_queue* iq, int cap){
     return;
 }
 
+void free_ins_queue(struct ins_queue* iq){
+    free(iq->entries);
+}
+
 void insert_ins_queue(struct ins_queue* iq, void* k, void* v){
     struct ins_queue_entry* niqe,
            * iqe = malloc(sizeof(struct ins_queue_entry));

@@ -19,6 +19,7 @@ struct ins_queue{
  * TODO: test map insertions with a mutex version of this
  */
 void init_ins_queue(struct ins_queue* iq, int cap);
+void free_ins_queue(struct ins_queue* iq);
 void insert_ins_queue(struct ins_queue* iq, void* k, void* v);
 struct ins_queue_entry* pop_ins_queue(struct ins_queue* iq, uint32_t throttle_after, int usec_sleep);
 void abort_ins_queue_operations(struct ins_queue* iq);

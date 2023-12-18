@@ -395,12 +395,25 @@ void maybe_spawn_pinsert_threads(struct map* m){
 }
 
 void sync_pinsertions(struct map* m){
+    /*m->pih.*/
 }
 
-void join_pinsert_threads(struct map* m){
+void pinsert_thread_cleanup(struct map* m){
+    for (int i = 0; i < m->pih.n_threads; ++i) {
+        pthread_join(m->pih.pth[i], NULL);
+    }
+    free(m->pih.pth);
+    free_ins_queue(&m->pih.iq);
+}
+
+/* init_ins_queue can be recalled after this to resume regular operation */
+void stop_pinsert_threads(struct map* m){
+    m->pih.iq.exit = 1;
+    pinsert_thread_cleanup(m);
 }
 
 /* spawns popping threads if !ready, inserts into ins_queue */
-int pinsert_map(struct map* m, void* key, void* value){
-    return insert_map(m, key, value);
+void pinsert_map(struct map* m, void* key, void* value){
+    maybe_spawn_pinsert_threads(m);
+    insert_ins_queue(&m->pih.iq, key, value);
 }

@@ -197,5 +197,5 @@ void load_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
               char* bucket_prefix,  uint16_t (*hashfunc)(void*));
 /* k/v size must be consistent with struct map's entries */
 int insert_map(struct map* m, void* key, void* value);
-int pinsert_map(struct map* m, void* key, void* value);
+void pinsert_map(struct map* m, void* key, void* value);
 void* lookup_map(struct map* m, void* key);
