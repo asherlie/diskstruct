@@ -27,9 +27,9 @@ void init_pih(struct parallel_insertion_helper* pih, int queue_cap, int n_thread
 }
 
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
-              char* bucket_prefix, uint16_t (*hashfunc)(void*)){
+              char* bucket_prefix, int n_threads, uint16_t (*hashfunc)(void*)){
 
-    init_pih(&m->pih, 10000, 40);
+    init_pih(&m->pih, 10000, n_threads);
     m->pih.ready = 0;
     strcpy(m->name, name);
     strcpy(m->bucket_prefix, bucket_prefix);
@@ -211,8 +211,8 @@ void get_bucket_info(struct map* m, struct bucket* b){
 /* loads map into "memory" */
 // TODO: define this in #define as well
 void load_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz,
-              char* bucket_prefix,  uint16_t (*hashfunc)(void*)){
-    init_map(m, name, n_buckets, key_sz, value_sz, bucket_prefix, hashfunc);
+              char* bucket_prefix,  int n_threads, uint16_t (*hashfunc)(void*)){
+    init_map(m, name, n_buckets, key_sz, value_sz, bucket_prefix, n_threads, hashfunc);
     for (int i = 0; i < m->n_buckets; ++i) {
         get_bucket_info(m, &m->buckets[i]);
     }

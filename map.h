@@ -6,12 +6,12 @@
 #include "ins_queue.h"
 
 #define N_BUCKETS 10
-#define REGISTER_MAP(name, key_type, val_type, hash_func) \
+#define REGISTER_MAP(name, key_type, val_type, ins_threads, hash_func) \
     typedef struct {\
         struct map m;\
     }name;\
     void init_##name(name* m){\
-        init_map(&m->m, #name, N_BUCKETS, sizeof(key_type), sizeof(val_type), "autobkt", hash_func); \
+        init_map(&m->m, #name, N_BUCKETS, sizeof(key_type), sizeof(val_type), "autobkt", ins_threads, hash_func); \
     } \
     int insert_##name(name* m, key_type k, val_type v){ \
         atomic_fetch_add(&m->m.nominal_insertions, 1); \
@@ -34,7 +34,7 @@
         return ret; \
     } \
     void load_##name(name* m){ \
-        load_map(&m->m, #name, N_BUCKETS, sizeof(key_type), sizeof(val_type), "autobkt", hash_func); \
+        load_map(&m->m, #name, N_BUCKETS, sizeof(key_type), sizeof(val_type), "autobkt", ins_threads, hash_func); \
     }
 
 
@@ -196,10 +196,10 @@ struct map{
 };
 
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
-              char* bucket_prefix, uint16_t (*hashfunc)(void*));
+              char* bucket_prefix, int n_threads, uint16_t (*hashfunc)(void*));
 /* loads map into memory */
 void load_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz,
-              char* bucket_prefix,  uint16_t (*hashfunc)(void*));
+              char* bucket_prefix,  int n_threads, uint16_t (*hashfunc)(void*));
 /* k/v size must be consistent with struct map's entries */
 int insert_map(struct map* m, void* key, void* value);
 void* lookup_map(struct map* m, void* key);

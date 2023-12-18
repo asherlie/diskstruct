@@ -33,10 +33,10 @@ struct tstr{
     float y;
 };
 
-REGISTER_MAP(teststruct, int, struct tstr, hashfnc)
-REGISTER_MAP(testmap, int, float, hashfnc)
-REGISTER_MAP(intmap, int, int, hashfnc)
-REGISTER_MAP(simpmap, int, int, hashfnc)
+REGISTER_MAP(teststruct, int, struct tstr, 40, hashfnc)
+REGISTER_MAP(testmap, int, float, 40, hashfnc)
+REGISTER_MAP(intmap, int, int, 40, hashfnc)
+REGISTER_MAP(simpmap, int, int, 60, hashfnc)
 
 /*
  * initialize 10 threads, each is given a diff starting integer
@@ -138,6 +138,7 @@ void write_load_test(int n, _Bool pinsert){
     }
 
     sync_pinsertions(&m.m);
+    stop_pinsert_threads(&m.m);
 
     return;
     load_simpmap(&ml);
@@ -211,7 +212,7 @@ void test_raw(){
     int k, v;
     int* lu_v;
 
-    init_map(&m, "ashmap", 10, sizeof(int), sizeof(int), "ashbkt", hashfnc);
+    init_map(&m, "ashmap", 10, sizeof(int), sizeof(int), "ashbkt", 30, hashfnc);
     for(int i = 0; i < m.n_buckets; ++i){
         printf("%s\n", m.buckets[i].fn);
     }
