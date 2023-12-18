@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <pthread.h>
 
 #include "map.h"
 
@@ -363,13 +364,43 @@ void* lookup_map(struct map* m, void* key){
     return lu_value;
 }
 
+/* TODO: remove all of the below and put into a different thread specific file */
+
+/* this thread will exit once m->pih.iq.exit is set */
+void* parallel_insertion_thread(void* vmap){
+    struct map* m = vmap;
+    struct ins_queue_entry* iqe = (void*)0x1;
+    while ((iqe = pop_ins_queue(&m->pih.iq, 100, 1000))) {
+        insert_map(m, iqe->key, iqe->value);
+        free(iqe);
+    }
+    return NULL;
+}
+
+/* spawns n_threads threads */
+void maybe_spawn_pinsert_threads(struct map* m){
+    _Bool expected = 0;
+    /* exit if pih.ready is already 1
+     * it's not important that threads are actually spawned if another thread
+     * pinserts before the insertion threads ready to actually insert because the queue will
+     * just begin to fill up, the only thing that's important to guarantee is that only
+     * one thread spawns the threads
+     */
+    if (!atomic_compare_exchange_strong(&m->pih.ready, &expected, 1)) {
+        return;
+    }
+    for (int i = 0; i < m->pih.n_threads; ++i) {
+        pthread_create(m->pih.pth + i, NULL, parallel_insertion_thread, m);
+    }
+}
+
+void sync_pinsertions(struct map* m){
+}
+
+void join_pinsert_threads(struct map* m){
+}
+
 /* spawns popping threads if !ready, inserts into ins_queue */
 int pinsert_map(struct map* m, void* key, void* value){
     return insert_map(m, key, value);
-}
-
-void* parallel_insertion_thread(void* vmap){
-    struct map* m = vmap;
-    (void)m;
-    return NULL;
 }

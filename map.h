@@ -171,7 +171,7 @@ struct bucket{
 
 struct parallel_insertion_helper{
     struct ins_queue iq;
-    _Bool ready;
+    _Atomic _Bool ready;
     int n_threads;
     pthread_t* pth;
 };
