@@ -36,7 +36,7 @@ struct tstr{
 REGISTER_MAP(teststruct, int, struct tstr, 40, hashfnc)
 REGISTER_MAP(testmap, int, float, 40, hashfnc)
 REGISTER_MAP(intmap, int, int, 40, hashfnc)
-REGISTER_MAP(simpmap, int, int, 60, hashfnc)
+REGISTER_MAP(simpmap, int, int, 25, hashfnc)
 
 /*
  * initialize 10 threads, each is given a diff starting integer
@@ -137,8 +137,10 @@ void write_load_test(int n, _Bool pinsert){
         else insert_simpmap(&m, i+1, i);
     }
 
-    pinsert_sync_simpmap(&m);
-    pinsert_stop_threads_simpmap(&m);
+    if (pinsert) {
+        pinsert_sync_simpmap(&m);
+        pinsert_stop_threads_simpmap(&m);
+    }
 
     return;
     load_simpmap(&ml);

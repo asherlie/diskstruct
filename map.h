@@ -22,6 +22,12 @@
         /*insert_ins_queue(&m->m.iq, &k, &v);*/ \
         pinsert_map(&m->m, &k, &v); \
     } \
+    void pinsert_sync_##name(name* m){ \
+        sync_pinsertions(&m->m); \
+    } \
+    void pinsert_stop_threads_##name(name* m){ \
+        stop_pinsert_threads(&m->m); \
+    } \
     val_type lookup_##name(name* m, key_type k, _Bool* found){ \
         void* tmp = lookup_map(&m->m, &k);\
         val_type ret; \
