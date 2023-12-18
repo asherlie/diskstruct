@@ -116,6 +116,13 @@ void test_load_parallel(){
  *
  *
  *  TODO: n insertion threads should be variable, changed with a function 
+ *  this can be done elegantly by just updating n_threads, forcing exit, joining, and then atomically setting ready to 0
+ *  once this is done, the next thread that calls pinsert() will implicitly adjust the number of insertion threads
+ *      this could cause problems with anything that iterates over all threads but this can be known to the user
+ *      the only function that will iterate over threads will be the function to join threads
+ *
+ *      for now there's no issue, this problem will only be introduced once resizing is allowed
+ *      as of now setting n_threads is only done during initialization
 */
 
 void write_load_test(int n, _Bool pinsert){
