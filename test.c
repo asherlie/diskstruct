@@ -36,7 +36,7 @@ struct tstr{
 REGISTER_MAP(teststruct, int, struct tstr, 40, hashfnc)
 REGISTER_MAP(testmap, int, float, 40, hashfnc)
 REGISTER_MAP(intmap, int, int, 40, hashfnc)
-REGISTER_MAP(simpmap, int, int, 25, hashfnc)
+REGISTER_MAP(simpmap, int, int, 200, hashfnc)
 
 /*
  * initialize 10 threads, each is given a diff starting integer
@@ -231,6 +231,28 @@ void test_raw(){
     printf("result: %i\n", *lu_v);
 }
 
+// if we remove duplicate k/v pairs then the nominal sync_pinsertions() system will no longer
+// work due to a mismatch in nominal_insertions and actual insertions
+// only if we do this will it be possible to keep sync_pinsertions() correct
+// nvm, this could be fixed by just incrementing in a diff place, OR incrementing even if we abort!!
+// this will essentially make nominal_insertions mean insertion_attempts_made
+void test_duplicate_removal(){
+    simpmap m;
+    init_simpmap(&m);
+    int sz = 0;
+    for (int i = 0; i < 10; ++i) {
+        insert_simpmap(&m, 1, 1);
+        pinsert_simpmap(&m, 1, 1);
+    }
+    pinsert_sync_simpmap(&m);
+    pinsert_stop_threads_simpmap(&m);
+    for (int i = 0; i < m.m.n_buckets; ++i) {
+        sz += m.m.buckets[i].n_entries;
+    }
+    printf("%i == %i\n", sz, 1);
+    /*m.m.*/
+}
+
 void check_lf(){
     struct bucket b;
     printf("atomic_is_lock_free(resize_in_prog): %i\n", atomic_is_lock_free(&b.resize_in_prog));
@@ -240,15 +262,8 @@ void check_lf(){
 }
 
 int main(){
-    /*check_lf();*/
-    /*test_parallel(100, 100000000);*/
-    /*test_load_parallel();*/
-    /*write_load_test(8200);*/
-    // this works at 9, breaks at 10, issue is one additional resize
-    write_load_test(1190, 1);
-    /*test_parallel(1, 100000);*/
-    /*test_struct();*/
-    /*test_float();*/
+    /*write_load_test(1000, 1);*/
+    test_duplicate_removal();
 }
 /*
  * TODO: in order
