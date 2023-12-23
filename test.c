@@ -33,10 +33,10 @@ struct tstr{
     float y;
 };
 
-REGISTER_MAP(teststruct, int, struct tstr, 40, hashfnc)
-REGISTER_MAP(testmap, int, float, 40, hashfnc)
-REGISTER_MAP(intmap, int, int, 40, hashfnc)
-REGISTER_MAP(simpmap, int, int, 200, hashfnc)
+REGISTER_MAP(teststruct, int, struct tstr, 40, 1, hashfnc)
+REGISTER_MAP(testmap, int, float, 40, 1, hashfnc)
+REGISTER_MAP(intmap, int, int, 40, 1, hashfnc)
+REGISTER_MAP(simpmap, int, int, 200, 1, hashfnc)
 
 /*
  * initialize 10 threads, each is given a diff starting integer
@@ -214,7 +214,7 @@ void test_raw(){
     int k, v;
     int* lu_v;
 
-    init_map(&m, "ashmap", 10, sizeof(int), sizeof(int), "ashbkt", 30, hashfnc);
+    init_map(&m, "ashmap", 10, sizeof(int), sizeof(int), "ashbkt", 30, 1000, hashfnc);
     for(int i = 0; i < m.n_buckets; ++i){
         printf("%s\n", m.buckets[i].fn);
     }
@@ -236,6 +236,7 @@ void test_raw(){
 // only if we do this will it be possible to keep sync_pinsertions() correct
 // nvm, this could be fixed by just incrementing in a diff place, OR incrementing even if we abort!!
 // this will essentially make nominal_insertions mean insertion_attempts_made
+// THAT'S THE ONE
 void test_duplicate_removal(){
     simpmap m;
     init_simpmap(&m);
