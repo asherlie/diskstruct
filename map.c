@@ -26,6 +26,10 @@ void init_pih(struct parallel_insertion_helper* pih, int queue_cap, int n_thread
     pih->pth = malloc(sizeof(pthread_t)*n_threads);
 }
 
+/* TODO: init_map() and load_map() should not take in queue_cap and n_threads, it should
+ * be set later on using a special pinsert initialization function
+ * TODO: init_pih() should be passed some queue_cap from init_map()
+ */
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
               char* bucket_prefix, int n_threads, uint16_t (*hashfunc)(void*)){
 
@@ -38,6 +42,12 @@ void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, ui
     m->value_sz = value_sz;
     m->n_buckets = n_buckets;
     m->buckets = calloc(sizeof(struct bucket), n_buckets);
+    /* TODO: the nominal_insertions system is broken by duplicates
+     * we could potentially atomically sub nominal insertions if we find
+     * out it's a dupe
+     *
+     * interesting, we can use a separate function to check dupes
+     */
     m->nominal_insertions = m->total_insertions = 0;
     /*does this overwrite if already exists?*/
     mkdir(m->name, 0777);
@@ -298,10 +308,17 @@ int insert_map(struct map* m, void* key, void* value){
      *     the first insertion thread will get idx == cap upon calling atomic_inc!
      *     no special case needed :)
     */
+    /*
+     * TODO: this should be moved once we remove duplicates
+     *     it should be somewhere in this function that will be reach even in the event of
+     *     a duplicate that ends up being ignored!
+     *     only if we do this will it be possible to keep sync_pinsertions() correct
+    */
     atomic_fetch_add(&m->total_insertions, 1);
     return retries;
 }
 
+/*this fn must be adjusted to optionally set a value if a dupe is found*/
 void* lookup_map(struct map* m, void* key){
     uint16_t idx = m->hashfunc(key) % m->n_buckets;
     struct bucket* b = &m->buckets[idx];
@@ -326,6 +343,8 @@ void* lookup_map(struct map* m, void* key){
      */
 
     /* TODO: replace with do while */
+    // TODO: we only have to wait until bucket is not insertin!
+    // we know which bucket we're looking at already
     while (!insertions_completed || resize_in_prog) {
         if (atomic_load(&b->insertions_in_prog) == 1){
             insertions_completed = 1;
@@ -338,6 +357,8 @@ void* lookup_map(struct map* m, void* key){
         }
     }
 
+    // this will have to not be RDONLY if we're writing here
+    // fd = open(f->fn, set_val ? O_RDWR | O_RDONLY)
     fd = open(b->fn, O_RDONLY);
 
     /* TODO: allow loading of a specified number of k/v pairs into memory to speed up lookups */
@@ -350,6 +371,69 @@ void* lookup_map(struct map* m, void* key){
         read(fd, lu_value, m->value_sz);
         if (!memcmp(key, lu_key, m->key_sz)) {
             found = 1;
+            if (set_val) {
+                /*
+                wait for all lookup() threads to finish updating values (for this bucket)
+                somehow guarantee that no other thread will write
+                    could just atomic_fetch_add() a variable
+
+                    wait until that variable == 1
+                        this will only be when all other threads are done with this operation
+
+                this causes huge issues with insertions SINCE at the beginning of this function we just choose
+                an upper bound for n entries by waiting for queued insertions
+                re-read the above to make sure that no new insertions can start until this has exited
+
+                even so, i believe there's always a threadsafety issue here because lookup() can insert
+                    lookup() thread 1  -> doesn't find duplicate, doesn't insert
+                    insert() thread 2  -> inserts
+                    insert() tread 1   -> even though previous call to lookup() didn't find entry, it now exists
+                                          inserting at the end of bucket will corrupt map
+
+                    
+                    this whole mess may need to be one function - lookup_insert()
+                    it'll use all the same primitives but will just do our insert() from within lookup() call
+                    this can maybe even use existing insert() code!
+                    but insert() will now only be called from within lookup_insert()
+                and then  write(fd, set_val, m->value_sz)
+                
+
+                i'm thinking about whether or not it's safe to insert from *here*, the following are guaranteed
+                in this branch:
+
+                    1. no resizes will occur until we decrement insertions_in_prog
+                    2. at least n_entries entries have been properly written
+
+                i'll need an entirely new function to overwrite - it'll use a diff primitive
+                the issue is that each ENTRY now needs a primitive which will essentially be
+                using mem for each entry, which defeats the entire purpose
+
+                ~~~~~~~~~~~~~~~~~~~~
+                this can just be done on a per bucket level and we can ensure that the user
+                is aware of the cost associated with duplicate insertion
+                    this will mean that we can only overwrite one entry per bucket at a time
+                    this is a pretty big bottleneck considering the cost of a full scan/write operation
+
+                even better might be to just have n_primitives defined and have _Atomic _Bool entry_overwrites[n_primitives]
+                each insertion will use entry_overwrites[idx % n_primitives] as their flag
+
+                at the very least this allows finer tuning of primitives over bucket level
+
+                BTW, use the actual atomic flag if i can
+
+                void overwrite_map_entry():
+                    while (flag_is_set_acquire_otherwise(entry_overwrites[idx % n_primitives])) {
+                        ;
+                    }
+                    lseek()
+                    write()
+                ~~~~~~~~~~~~~~~~~~~~
+
+                insert_map() will be left intact and can be used when no duplicates are expected,
+                this function will just use overwrite_map_entry()
+                */
+                overwrite_map_entry();
+            }
             break;
         }
     }
@@ -396,6 +480,9 @@ void maybe_spawn_pinsert_threads(struct map* m){
     }
 }
 
+/* TODO: potentially usleep() between checks to give some cpu time to
+ * insertion threads
+ */
 void sync_pinsertions(struct map* m){
     uint32_t nom_ins = atomic_load(&m->nominal_insertions);
     while (atomic_load(&m->total_insertions) < nom_ins) {
