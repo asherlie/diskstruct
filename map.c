@@ -318,8 +318,16 @@ int insert_map(struct map* m, void* key, void* value){
     return retries;
 }
 
+/*
+ * lookup() will call lookup_map_internal()
+ *     lookup_map_internal() will insert using a special overwrite function
+ * 
+ * insert_map() will take in an arg specifying whether we'll be expecting duplicates
+ * insert_map() will use lookup_map_internal() if so, before calling insert_map_internal() if not found
+*/
+
 /*this fn must be adjusted to optionally set a value if a dupe is found*/
-void* lookup_map(struct map* m, void* key){
+void* lookup_map_internal(struct map* m, void* key, void* set_val){
     uint16_t idx = m->hashfunc(key) % m->n_buckets;
     struct bucket* b = &m->buckets[idx];
     uint32_t n_entries = atomic_load(&b->n_entries);
@@ -448,6 +456,10 @@ void* lookup_map(struct map* m, void* key){
     }
 
     return lu_value;
+}
+
+void* lookup_map(struct map* m, void* key){
+    return lookup_map_internal(m, key, NULL);
 }
 
 /* TODO: remove all of the below and put into a different thread specific file */
