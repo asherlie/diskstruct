@@ -19,11 +19,15 @@ _Bool grow_file(char* fn, uint32_t grow_to){
     return ret;
 }
 
-void init_pih(struct parallel_insertion_helper* pih, int queue_cap, int n_threads){
+void init_pih(struct parallel_insertion_helper* pih, int queue_cap, int n_threads, int idx_overwrite_prims){
     pih->ready = 0;
     init_ins_queue(&pih->iq, queue_cap);
     pih->n_threads = n_threads;
     pih->pth = malloc(sizeof(pthread_t)*n_threads);
+    pih->idx_overwrite = NULL;
+    pih->idx_overwrite_prims = idx_overwrite_prims;
+    if (idx_overwrite_prims)
+        pih->idx_overwrite = malloc(sizeof(_Atomic _Bool)*idx_overwrite_prims);
 }
 
 /* TODO: init_map() and load_map() should not take in queue_cap and n_threads, it should
@@ -31,9 +35,9 @@ void init_pih(struct parallel_insertion_helper* pih, int queue_cap, int n_thread
  * TODO: init_pih() should be passed some queue_cap from init_map()
  */
 void init_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz, 
-              char* bucket_prefix, int n_threads, uint16_t (*hashfunc)(void*)){
+              char* bucket_prefix, int n_threads, int idx_overwrite_prims, uint16_t (*hashfunc)(void*)){
 
-    init_pih(&m->pih, 10000, n_threads);
+    init_pih(&m->pih, 10000, n_threads, idx_overwrite_prims);
     m->pih.ready = 0;
     strcpy(m->name, name);
     strcpy(m->bucket_prefix, bucket_prefix);
@@ -221,8 +225,8 @@ void get_bucket_info(struct map* m, struct bucket* b){
 /* loads map into "memory" */
 // TODO: define this in #define as well
 void load_map(struct map* m, char* name, uint16_t n_buckets, uint32_t key_sz, uint32_t value_sz,
-              char* bucket_prefix,  int n_threads, uint16_t (*hashfunc)(void*)){
-    init_map(m, name, n_buckets, key_sz, value_sz, bucket_prefix, n_threads, hashfunc);
+              char* bucket_prefix,  int n_threads, int idx_overwrite_prims, uint16_t (*hashfunc)(void*)){
+    init_map(m, name, n_buckets, key_sz, value_sz, bucket_prefix, n_threads, idx_overwrite_prims, hashfunc);
     for (int i = 0; i < m->n_buckets; ++i) {
         get_bucket_info(m, &m->buckets[i]);
     }
@@ -325,6 +329,20 @@ int insert_map(struct map* m, void* key, void* value){
  * insert_map() will take in an arg specifying whether we'll be expecting duplicates
  * insert_map() will use lookup_map_internal() if so, before calling insert_map_internal() if not found
 */
+
+/* this function handles the thread safety of concurrent
+ * overwrites to a map/bucket/entry by using a user specified number of
+ * atomic flags acquired according to entry idx
+ *
+ * can a flag be used here?
+ */
+void overwrite_map_entry_val(struct map* m, int fd, void* new_val){
+    (void)m;
+    (void)fd;
+    (void)new_val;
+    /*if (!atomic_compare_exchange_strong(&m->pih.ready, &expected, 1)) {*/
+    /*if (atomic_flag_test_and_set());*/
+}
 
 /*this fn must be adjusted to optionally set a value if a dupe is found*/
 void* lookup_map_internal(struct map* m, void* key, void* set_val){
@@ -440,7 +458,7 @@ void* lookup_map_internal(struct map* m, void* key, void* set_val){
                 insert_map() will be left intact and can be used when no duplicates are expected,
                 this function will just use overwrite_map_entry()
                 */
-                overwrite_map_entry();
+                overwrite_map_entry_val(m, fd, set_val);
             }
             break;
         }
